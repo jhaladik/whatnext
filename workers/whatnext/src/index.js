@@ -3,6 +3,9 @@ import { Router } from 'itty-router';
 import { QuestionService } from './services/questionService.js';
 import { PromptBuilder } from './services/promptBuilder.js';
 import { RecommendationService } from './services/recommendationService.js';
+import { DomainService } from './services/domainService.js';
+import { EnrichmentService } from './services/enrichmentService.js';
+import { DonationService } from './services/donationService.js';
 import { UserState } from './models/userState.js';
 import { RateLimiter } from './utils/rateLimiter.js';
 import { 
@@ -120,6 +123,50 @@ router.get('/api/test-claude', asyncHandler(async (request, env) => {
   }
 }));
 
+// Get available domains
+router.get('/api/domains', asyncHandler(async (request, env) => {
+  const domainService = new DomainService(env);
+  const domains = await domainService.getAvailableDomains();
+  
+  const response = Response.json({
+    domains,
+    defaultDomain: 'movies'
+  });
+  
+  return wrapResponse(request, response, env);
+}));
+
+// Select domain for session
+router.post('/api/domain', asyncHandler(async (request, env) => {
+  // Rate limiting
+  const identifier = request.headers.get('CF-Connecting-IP') || 'unknown';
+  const rateLimit = await rateLimiter.checkLimit(identifier);
+  
+  if (!rateLimit.allowed) {
+    throw new AppError('Rate limit exceeded', 'RATE_LIMIT_EXCEEDED', 429, {
+      retryAfter: rateLimit.retryAfter
+    });
+  }
+  
+  // Parse request body
+  const data = await request.json();
+  
+  if (!data.sessionId || !data.domain) {
+    throw new ValidationError('Missing sessionId or domain');
+  }
+  
+  // Validate session ID
+  if (!isValidUUID(data.sessionId)) {
+    throw new ValidationError('Invalid session ID format');
+  }
+  
+  const domainService = new DomainService(env);
+  const result = await domainService.selectDomain(data.sessionId, data.domain);
+  
+  const response = Response.json(result);
+  return wrapResponse(request, response, env);
+}));
+
 // Start new recommendation session
 router.post('/api/start', asyncHandler(async (request, env) => {
   // Rate limiting
@@ -153,6 +200,15 @@ router.post('/api/start', asyncHandler(async (request, env) => {
   const sessionId = crypto.randomUUID();
   const userState = new UserState(sessionId);
   
+  // Set domain if provided (default to movies now)
+  const domain = data.domain || 'movies';
+  userState.domain = domain;
+  
+  // Store excluded movies if provided
+  if (data.excludedMovies && Array.isArray(data.excludedMovies)) {
+    userState.excludedMovies = data.excludedMovies;
+  }
+  
   // Set context from request
   if (data.context) {
     Object.entries(data.context).forEach(([key, value]) => {
@@ -171,9 +227,17 @@ router.post('/api/start', asyncHandler(async (request, env) => {
   
   request.mark('session_created');
   
-  // Get the perfect first question
-  const questionService = new QuestionService(env);
-  const firstQuestion = await questionService.getPerfectQuestion();
+  // Get the perfect first question based on domain
+  let firstQuestion;
+  if (domain !== 'general') {
+    const domainService = new DomainService(env);
+    firstQuestion = await domainService.getFirstDomainQuestion(domain);
+  }
+  
+  if (!firstQuestion) {
+    const questionService = new QuestionService(env);
+    firstQuestion = await questionService.getPerfectQuestion();
+  }
   
   request.mark('question_selected');
   
@@ -289,8 +353,11 @@ router.post('/api/swipe/:sessionId', asyncHandler(async (request, env) => {
       })
     });
     
-    // Clean up session after logging
-    await env.USER_SESSIONS.delete(sessionId);
+    // Keep session alive for "Find more movies" feature
+    // Session will auto-expire after SESSION_TIMEOUT_SECONDS
+    await env.USER_SESSIONS.put(sessionId, JSON.stringify(userState.toJSON()), {
+      expirationTtl: env.SESSION_TIMEOUT_SECONDS || 3600
+    });
     
     // Add donation prompt if enabled
     if (env.ENABLE_DONATIONS) {
@@ -305,6 +372,45 @@ router.post('/api/swipe/:sessionId', asyncHandler(async (request, env) => {
     
     return wrapResponse(request, response, env);
   }
+}));
+
+// Get more recommendations with same preferences but excluded movies
+router.post('/api/more-recommendations/:sessionId', asyncHandler(async (request, env) => {
+  const { sessionId } = request.params;
+  
+  // Validate session ID
+  if (!isValidUUID(sessionId)) {
+    throw new ValidationError('Invalid session ID format');
+  }
+  
+  // Get request body with excluded movies
+  const data = await request.json();
+  const excludedMovies = data.excludedMovies || [];
+  
+  // Retrieve session state
+  const stateJson = await env.USER_SESSIONS.get(sessionId);
+  if (!stateJson) {
+    throw new SessionExpiredError('Session not found or expired');
+  }
+  
+  const userState = UserState.fromJSON(JSON.parse(stateJson));
+  
+  // Add excluded movies to userState
+  userState.excludedMovies = excludedMovies;
+  
+  // Generate recommendations directly without new questions
+  const recommendationService = new RecommendationService(env);
+  const recommendations = await recommendationService.getFinalRecommendations(userState);
+  
+  // Return recommendations
+  const response = Response.json({
+    type: 'recommendations',
+    ...recommendations,
+    progress: 100,
+    sessionId: sessionId
+  });
+  
+  return wrapResponse(request, response, env);
 }));
 
 // Submit feedback
@@ -585,6 +691,285 @@ function generateDonationPrompt(recommendations) {
     options: [1, suggestedAmount, suggestedAmount * 2].filter((v, i, a) => a.indexOf(v) === i)
   };
 }
+
+// Test endpoint to check Stripe configuration
+router.get('/api/donation/test-config', async (request, env) => {
+  try {
+    const hasStripeKey = !!env.STRIPE_SECRET_KEY;
+    const keyPrefix = env.STRIPE_SECRET_KEY ? env.STRIPE_SECRET_KEY.substring(0, 7) : 'not set';
+    
+    return new Response(JSON.stringify({
+      success: true,
+      hasStripeKey,
+      keyPrefix: keyPrefix === 'sk_test' ? 'test mode' : keyPrefix === 'sk_live' ? 'live mode' : keyPrefix,
+      frontendUrl: env.FRONTEND_URL,
+      donationsEnabled: env.ENABLE_DONATIONS
+    }), {
+      headers: { 'Content-Type': 'application/json' }
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({
+      error: error.message,
+      stack: error.stack
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+});
+
+// Debug endpoint to test Stripe directly
+router.post('/api/donation/test-stripe', async (request, env) => {
+  try {
+    const testParams = new URLSearchParams({
+      'payment_method_types[0]': 'card',
+      'mode': 'payment',
+      'success_url': 'https://example.com/success',
+      'cancel_url': 'https://example.com/cancel',
+      'line_items[0][price_data][currency]': 'usd',
+      'line_items[0][price_data][product_data][name]': 'Test Product',
+      'line_items[0][price_data][unit_amount]': '500',
+      'line_items[0][quantity]': '1'
+    });
+
+    const response = await fetch('https://api.stripe.com/v1/checkout/sessions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${env.STRIPE_SECRET_KEY}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: testParams.toString()
+    });
+
+    const responseText = await response.text();
+    
+    if (!response.ok) {
+      return new Response(JSON.stringify({
+        error: 'Stripe API Error',
+        status: response.status,
+        response: responseText,
+        hasKey: !!env.STRIPE_SECRET_KEY,
+        keyPrefix: env.STRIPE_SECRET_KEY ? env.STRIPE_SECRET_KEY.substring(0, 7) : 'none'
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const result = JSON.parse(responseText);
+    return new Response(JSON.stringify({
+      success: true,
+      checkoutUrl: result.url,
+      sessionId: result.id
+    }), {
+      headers: { 'Content-Type': 'application/json' }
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({
+      error: error.message,
+      stack: error.stack,
+      hasKey: !!env.STRIPE_SECRET_KEY
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+});
+
+// Donation routes - WITHOUT asyncHandler to match working test endpoint
+router.post('/api/donation/create-checkout', async (request, env) => {
+  console.log('Creating donation checkout session');
+  
+  try {
+    const body = await request.json();
+    const { amount, sessionId, timeSaved, userMessage } = body;
+    
+    // Validate
+    if (!amount || amount < 1 || amount > 10000) {
+      return new Response(JSON.stringify({
+        error: 'Invalid donation amount'
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // Check Stripe key
+    if (!env.STRIPE_SECRET_KEY) {
+      return new Response(JSON.stringify({
+        error: 'Payment system not configured'
+      }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // Create Stripe checkout session directly (like test endpoint)
+    const params = new URLSearchParams({
+      'payment_method_types[0]': 'card',
+      'mode': 'payment',
+      'success_url': `${env.FRONTEND_URL || 'https://whatnext.pages.dev'}/donation/success?session_id={CHECKOUT_SESSION_ID}`,
+      'cancel_url': `${env.FRONTEND_URL || 'https://whatnext.pages.dev'}/donation/cancel`,
+      'line_items[0][price_data][currency]': 'usd',
+      'line_items[0][price_data][product_data][name]': 'Support What Next',
+      'line_items[0][price_data][unit_amount]': String(Math.round(amount * 100)),
+      'line_items[0][quantity]': '1',
+      'billing_address_collection': 'auto'
+    });
+    
+    const stripeResponse = await fetch('https://api.stripe.com/v1/checkout/sessions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${env.STRIPE_SECRET_KEY}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: params.toString()
+    });
+    
+    const responseText = await stripeResponse.text();
+    
+    if (!stripeResponse.ok) {
+      console.error('Stripe error:', responseText);
+      return new Response(JSON.stringify({
+        error: 'Failed to create checkout session',
+        details: responseText
+      }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    const session = JSON.parse(responseText);
+    
+    return new Response(JSON.stringify({
+      success: true,
+      checkoutUrl: session.url,
+      sessionId: session.id,
+      amount,
+      currency: 'usd'
+    }), {
+      headers: { 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error:', error);
+    return new Response(JSON.stringify({
+      error: error.message,
+      stack: error.stack
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+});
+
+router.get('/api/donation/verify/:sessionId', async (request, env) => {
+  const { sessionId } = request.params;
+  console.log('Verifying donation:', sessionId);
+  
+  try {
+    // Verify with Stripe directly
+    const stripeResponse = await fetch(`https://api.stripe.com/v1/checkout/sessions/${sessionId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${env.STRIPE_SECRET_KEY}`,
+      }
+    });
+    
+    if (!stripeResponse.ok) {
+      console.error('Stripe verification failed');
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Could not verify payment'
+      }), {
+        status: 400,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+    }
+    
+    const session = await stripeResponse.json();
+    
+    // Check if payment was successful
+    if (session.payment_status === 'paid') {
+      return new Response(JSON.stringify({
+        success: true,
+        amount: session.amount_total / 100, // Convert from cents
+        currency: session.currency,
+        customerEmail: session.customer_details?.email || null,
+        paymentStatus: session.payment_status
+      }), {
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+    } else {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Payment not completed',
+        status: session.payment_status
+      }), {
+        status: 400,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+    }
+  } catch (error) {
+    console.error('Error verifying donation:', error);
+    return new Response(JSON.stringify({
+      error: error.message,
+      success: false
+    }), {
+      status: 500,
+      headers: { 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
+    });
+  }
+});
+
+router.post('/api/stripe/webhook', asyncHandler(async (request, env) => {
+  console.log('Received Stripe webhook');
+  
+  const donationService = new DonationService(env);
+  
+  try {
+    const result = await donationService.handleWebhook(request);
+    
+    return wrapResponse(result);
+  } catch (error) {
+    console.error('Webhook error:', error);
+    // Return 200 to acknowledge receipt even on error
+    return wrapResponse({ received: true });
+  }
+}));
+
+router.get('/api/donation/stats/:timeframe?', asyncHandler(async (request, env) => {
+  const { timeframe } = request.params;
+  
+  const donationService = new DonationService(env);
+  
+  try {
+    const stats = await donationService.getDonationStats(timeframe || '7d');
+    
+    return wrapResponse({
+      success: true,
+      stats
+    });
+  } catch (error) {
+    console.error('Error getting donation stats:', error);
+    throw new AppError('Failed to get donation statistics', 500);
+  }
+}));
 
 // Export handler with error handling
 export default {

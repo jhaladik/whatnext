@@ -107,20 +107,42 @@ export class QuestionService {
    */
   async getCandidateQuestions(userState, excludeIds) {
     const choices = userState.getChoices();
+    const domain = userState.domain || 'general';
     
     // Determine question category based on user's path
     let categoryFilter = 'followup';
     let additionalFilter = '';
     
-    if (choices.length > 0) {
-      const firstChoice = choices[0];
-      if (firstChoice.questionId === 'cognitive_engagement') {
-        if (firstChoice.choice === 'challenge') {
-          // High cognitive load path
-          additionalFilter = "AND category IN ('learning', 'format', 'complexity', 'time')";
-        } else {
-          // Low cognitive load path  
-          additionalFilter = "AND category IN ('engagement', 'novelty', 'social', 'time', 'mood')";
+    // Add domain filter
+    let domainFilter = `AND domain = '${domain}'`;
+    
+    if (domain === 'movies') {
+      // For movie domain, filter based on mood choice
+      if (choices.length > 0) {
+        const moodChoice = choices.find(c => c.questionId === 'movie_mood');
+        if (moodChoice) {
+          if (moodChoice.choice === 'uplifting') {
+            // For uplifting mood, use light/positive questions
+            additionalFilter = "AND id IN ('movie_genre_light', 'movie_era_modern', 'movie_reality_light', 'movie_commitment_light', 'movie_solo_social')";
+          } else if (moodChoice.choice === 'intense') {
+            // For intense mood, use intense/thriller questions
+            additionalFilter = "AND id IN ('movie_genre_intense', 'movie_pace', 'movie_stakes', 'movie_violence', 'movie_ending')";
+          }
+        }
+      }
+    } else if (domain === 'general') {
+      // Original logic for general domain
+      domainFilter = "AND (domain = 'general' OR domain IS NULL)";
+      if (choices.length > 0) {
+        const firstChoice = choices[0];
+        if (firstChoice.questionId === 'cognitive_engagement') {
+          if (firstChoice.choice === 'challenge') {
+            // High cognitive load path
+            additionalFilter = "AND category IN ('learning', 'format', 'complexity', 'time')";
+          } else {
+            // Low cognitive load path  
+            additionalFilter = "AND category IN ('engagement', 'novelty', 'social', 'time', 'mood')";
+          }
         }
       }
     }
@@ -131,6 +153,7 @@ export class QuestionService {
         SELECT * FROM questions 
         WHERE question_type = ? 
           AND is_active = 1 
+          ${domainFilter}
           ${additionalFilter}
           ${excludeIds.length > 0 ? `AND id NOT IN (${placeholders})` : ''}
         ORDER BY expected_info_gain DESC
@@ -285,6 +308,68 @@ export class QuestionService {
       'interactivity_level': [
         { id: 'participate', text: 'Actively participate', emoji: '🙋' },
         { id: 'observe', text: 'Just observe', emoji: '👀' }
+      ],
+      
+      // Movie-specific questions
+      'movie_mood': [
+        { id: 'uplifting', text: 'Feel-good vibes', emoji: '😊' },
+        { id: 'intense', text: 'Edge of my seat', emoji: '😰' }
+      ],
+      'movie_genre_light': [
+        { id: 'comedy', text: 'Make me laugh', emoji: '😂' },
+        { id: 'drama', text: 'Warm my heart', emoji: '❤️' }
+      ],
+      'movie_genre_intense': [
+        { id: 'thriller', text: 'Heart-pounding thriller', emoji: '💓' },
+        { id: 'scifi', text: 'Mind-bending sci-fi', emoji: '🌌' }
+      ],
+      'movie_era_modern': [
+        { id: 'recent', text: 'Last 5 years', emoji: '🆕' },
+        { id: 'classic', text: 'Timeless classics', emoji: '🎭' }
+      ],
+      'movie_reality_light': [
+        { id: 'realistic', text: 'Could happen IRL', emoji: '🌍' },
+        { id: 'fantasy', text: 'Pure imagination', emoji: '🦄' }
+      ],
+      'movie_commitment_light': [
+        { id: 'quick', text: 'Under 2 hours', emoji: '⚡' },
+        { id: 'epic', text: "I'm invested", emoji: '🍿' }
+      ],
+      'movie_solo_social': [
+        { id: 'solo', text: 'Watching alone', emoji: '👤' },
+        { id: 'group', text: 'With others', emoji: '👥' }
+      ],
+      'movie_pace': [
+        { id: 'slow', text: 'Slow burn', emoji: '🕯️' },
+        { id: 'fast', text: 'Non-stop action', emoji: '💥' }
+      ],
+      'movie_stakes': [
+        { id: 'personal', text: 'Personal stakes', emoji: '💔' },
+        { id: 'global', text: 'World-ending', emoji: '🌎' }
+      ],
+      'movie_violence': [
+        { id: 'realistic', text: 'Gritty realism', emoji: '🩸' },
+        { id: 'stylized', text: 'Stylized fantasy', emoji: '⚔️' }
+      ],
+      'movie_ending': [
+        { id: 'satisfying', text: 'Satisfying conclusion', emoji: '🎁' },
+        { id: 'ambiguous', text: 'Open to interpretation', emoji: '❓' }
+      ],
+      'movie_franchise': [
+        { id: 'standalone', text: 'Stand-alone story', emoji: '📖' },
+        { id: 'universe', text: 'Part of universe', emoji: '🌐' }
+      ],
+      'movie_cast': [
+        { id: 'stars', text: 'Star-studded', emoji: '⭐' },
+        { id: 'unknown', text: 'Hidden gems', emoji: '💎' }
+      ],
+      'movie_subtitles': [
+        { id: 'english', text: 'English only', emoji: '🇬🇧' },
+        { id: 'foreign', text: 'Foreign films OK', emoji: '🌍' }
+      ],
+      'movie_rating': [
+        { id: 'family', text: 'Family-friendly', emoji: '👨‍👩‍👧‍👦' },
+        { id: 'mature', text: 'Mature content OK', emoji: '🔞' }
       ]
     };
 

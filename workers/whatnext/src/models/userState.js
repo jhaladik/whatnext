@@ -8,6 +8,7 @@ export class UserState {
     this.userAgent = null;
     this.contextualInfo = {};
     this.vector = null; // For future vector-based implementation
+    this.domain = 'general'; // Default domain
   }
 
   /**
@@ -201,7 +202,8 @@ export class UserState {
       deviceType: this.deviceType,
       userAgent: this.userAgent,
       contextualInfo: this.contextualInfo,
-      vector: this.vector
+      vector: this.vector,
+      domain: this.domain
     };
   }
 
@@ -216,6 +218,7 @@ export class UserState {
     userState.userAgent = data.userAgent;
     userState.contextualInfo = data.contextualInfo || {};
     userState.vector = data.vector;
+    userState.domain = data.domain || 'general';
     
     return userState;
   }

@@ -45,7 +45,11 @@ RATE_LIMIT_PER_MINUTE = 60
 LOG_LEVEL = "info"
 ENABLE_VECTOR_MODE = false
 ENABLE_ANALYTICS = true
-ENABLE_DONATIONS = false
+ENABLE_DONATIONS = true
+ENABLE_DOMAINS = true
+DEFAULT_DOMAIN = "movies"
+FRONTEND_URL = "https://whatnext.pages.dev"
+STRIPE_PUBLISHABLE_KEY = "pk_test_51QcPJrBN0pU8LSgJJMOdRWRSVoMvQSYRHkBRTNXOSrxzBqRxSQbgLy79QcOFyoXNqdJiZhLgmCqzFzN30R0mJQIX00fzuXrKdx"
 
 [env.staging]
 name = "what-next-staging"
@@ -90,10 +94,13 @@ SESSION_TIMEOUT_SECONDS = 3600
 LOG_LEVEL = "info"
 ENABLE_VECTOR_MODE = false
 ENABLE_ANALYTICS = true
+ENABLE_DOMAINS = true
+DEFAULT_DOMAIN = "movies"
 
 # Secrets (use `wrangler secret put` to set these)
 # CLAUDE_API_KEY = "your-claude-api-key"
 # ANALYTICS_SECRET = "your-analytics-secret"
+# TMDB_API_KEY = "your-tmdb-api-key"
 
 # Resource limits
 [limits]

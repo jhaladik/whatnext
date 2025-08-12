@@ -18,9 +18,12 @@
     "db:migrate": "wrangler d1 migrations apply what-next-db --local",
     "db:migrate:remote": "wrangler d1 migrations apply what-next-db",
     "db:seed": "node scripts/seed-database.js",
+    "db:seed:domains": "node scripts/apply-domain-migrations.js",
+    "db:seed:domains:production": "node scripts/apply-domain-migrations.js --production",
     "kv:seed": "node scripts/seed-kv.js",
     "analytics": "node scripts/analytics.js",
     "optimize": "node scripts/optimize-questions.js",
+    "test:domain": "node scripts/test-domain-movies.js",
     "logs": "wrangler tail",
     "logs:production": "wrangler tail --env production"
   },

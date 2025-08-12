@@ -1,11 +1,15 @@
 // src/services/recommendationService.js
 import { PromptBuilder } from './promptBuilder.js';
 import { CircuitBreaker } from '../utils/circuitBreaker.js';
+import { DomainService } from './domainService.js';
+import { EnrichmentService } from './enrichmentService.js';
 
 export class RecommendationService {
   constructor(env) {
     this.env = env;
     this.promptBuilder = new PromptBuilder(env);
+    this.domainService = new DomainService(env);
+    this.enrichmentService = new EnrichmentService(env);
     this.circuitBreaker = new CircuitBreaker(5, 60000); // 5 failures, 1 minute timeout
     this.claudeApiKey = env.CLAUDE_API_KEY;
     this.claudeEndpoint = env.CLAUDE_API_ENDPOINT || 'https://api.anthropic.com/v1/messages';
@@ -16,14 +20,16 @@ export class RecommendationService {
    */
   async getFinalRecommendations(userState) {
     try {
-      // Check cache first
+      // TEMPORARILY DISABLED: Cache check to ensure variety in recommendations
+      // TODO: Re-enable cache with better cache key generation that includes timestamp or session ID
       const cacheKey = userState.generateCacheKey();
-      const cached = await this.getCachedRecommendations(cacheKey);
+      // const cached = await this.getCachedRecommendations(cacheKey);
       
-      if (cached) {
-        console.log('Cache hit for recommendations');
-        return cached;
-      }
+      // if (cached) {
+      //   console.log('Cache hit for recommendations');
+      //   return cached;
+      // }
+      console.log('Cache disabled - generating fresh recommendations');
 
       console.log('Attempting Claude API call...');
       console.log('Claude API Key exists:', !!this.claudeApiKey);
@@ -34,8 +40,9 @@ export class RecommendationService {
         () => this.getClaudeRecommendations(userState)
       );
 
-      // Cache the results
-      await this.cacheRecommendations(cacheKey, recommendations);
+      // TEMPORARILY DISABLED: Cache storage to ensure variety
+      // await this.cacheRecommendations(cacheKey, recommendations);
+      console.log('Cache storage disabled - returning fresh recommendations');
       
       return recommendations;
 
@@ -57,10 +64,27 @@ export class RecommendationService {
    */
   async getClaudeRecommendations(userState) {
     console.log('Building Claude prompt...');
-    const prompt = this.promptBuilder.buildRecommendationPrompt(userState);
+    
+    // Get domain-specific prompt if available
+    let prompt;
+    const domain = userState.domain || 'general';
+    
+    if (domain !== 'general') {
+      prompt = await this.domainService.getDomainPromptTemplate(domain, userState);
+    } else {
+      prompt = this.promptBuilder.buildRecommendationPrompt(userState);
+    }
+    
+    // Log the actual prompt being sent
+    console.log('=== CLAUDE PROMPT ===');
+    console.log('Domain:', domain);
+    console.log('User choices:', userState.getChoices ? userState.getChoices() : userState.choices);
+    console.log('Prompt preview (first 500 chars):', prompt.substring(0, 500));
+    console.log('===================');
+    
     const request = this.promptBuilder.buildClaudeRequest(prompt);
     
-    console.log('Making Claude API request...');
+    console.log('Making Claude API request for domain:', domain);
     console.log('Request size:', JSON.stringify(request).length, 'bytes');
 
     const response = await fetch(this.claudeEndpoint, {
@@ -85,28 +109,41 @@ export class RecommendationService {
     
     // Parse Claude's response
     const content = data.content[0].text;
+    console.log('=== CLAUDE RAW RESPONSE ===');
+    console.log('Response preview (first 1000 chars):', content.substring(0, 1000));
+    console.log('==========================');
+    
     let parsedContent;
     
     try {
       parsedContent = JSON.parse(content);
+      console.log('Parsed recommendations titles:', parsedContent.recommendations.map(r => r.title));
     } catch (e) {
       console.error('Failed to parse Claude response:', content);
       throw new Error('Invalid response format from Claude');
     }
 
     // Add metadata to recommendations
-    const recommendations = parsedContent.recommendations.map(rec => ({
+    let recommendations = parsedContent.recommendations.map(rec => ({
       ...rec,
       generatedAt: Date.now(),
       sessionId: userState.sessionId,
       source: 'claude_api'
     }));
+    
+    // Enrich recommendations based on domain (already declared above)
+    if (domain !== 'general') {
+      console.log('Before TMDB enrichment:', recommendations.map(r => r.title));
+      recommendations = await this.enrichmentService.enrichRecommendations(domain, recommendations);
+      console.log('After TMDB enrichment:', recommendations.map(r => r.title));
+    }
 
     return {
       recommendations,
-      reasoning: parsedContent.reasoning,
+      reasoning: parsedContent.reasoning || parsedContent.explanation,
       timeSaved: this.calculateTimeSaved(userState),
-      sessionStats: this.getSessionStats(userState)
+      sessionStats: this.getSessionStats(userState),
+      domain
     };
   }
 

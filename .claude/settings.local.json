@@ -4,7 +4,11 @@
       "Bash(npm install)",
       "Bash(npx wrangler kv:namespace create:*)",
       "Bash(npx wrangler d1 migrations apply:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(mkdir:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(npm install:*)"
     ],
     "deny": [],
     "ask": []
