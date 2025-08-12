@@ -1,0 +1,66 @@
+{
+  "name": "what-next-recommendation-engine",
+  "version": "1.0.0",
+  "description": "Information theory-based content recommendation engine running on Cloudflare Workers",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "setup:production": "node scripts/setup-production.js",
+    "deploy": "wrangler deploy --env production",
+    "deploy:staging": "wrangler deploy --env staging",
+    "deploy:production": "wrangler deploy --env production",
+    "dev": "wrangler dev",
+    "build": "node scripts/build.js",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "db:migrate": "wrangler d1 migrations apply what-next-db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply what-next-db",
+    "db:seed": "node scripts/seed-database.js",
+    "kv:seed": "node scripts/seed-kv.js",
+    "analytics": "node scripts/analytics.js",
+    "optimize": "node scripts/optimize-questions.js",
+    "logs": "wrangler tail",
+    "logs:production": "wrangler tail --env production"
+  },
+  "keywords": [
+    "recommendation-engine",
+    "information-theory",
+    "cloudflare-workers",
+    "machine-learning",
+    "content-discovery"
+  ],
+  "author": "Your Team",
+  "license": "MIT",
+  "dependencies": {
+    "itty-router": "^4.0.25",
+    "@cloudflare/workers-types": "^4.20240208.0"
+  },
+  "devDependencies": {
+    "wrangler": "^3.28.2",
+    "vitest": "^1.2.2",
+    "@vitest/ui": "^1.2.2",
+    "eslint": "^8.56.0",
+    "prettier": "^3.2.5",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/what-next-recommendation-engine"
+  },
+  "bugs": {
+    "url": "https://github.com/your-org/what-next-recommendation-engine/issues"
+  },
+  "homepage": "https://github.com/your-org/what-next-recommendation-engine#readme",
+  "workspaces": [
+    "packages/*"
+  ],
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/your-org"
+  }
+}

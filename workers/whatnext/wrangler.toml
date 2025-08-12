@@ -1,0 +1,117 @@
+# wrangler.toml - Cloudflare Worker Configuration
+
+name = "what-next-recommendation-engine"
+main = "src/index.js"
+compatibility_date = "2024-08-12"
+compatibility_flags = ["nodejs_compat"]
+
+[env.production]
+name = "what-next-prod"
+
+# Production D1 Database
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "what-next-db"
+database_id = "aedb683b-e779-4504-bfb0-e43238890ee5"
+
+# Production KV Namespaces
+[[env.production.kv_namespaces]]
+binding = "QUESTIONS"
+id = "7d3f43412f164f408947c132c92bacee"
+
+[[env.production.kv_namespaces]]
+binding = "USER_SESSIONS"
+id = "ab30c89be56c43e69d4be5ee08302be9"
+
+[[env.production.kv_namespaces]]
+binding = "RECOMMENDATION_CACHE"
+id = "8c9bccdb6ff74cac8c8092cfcdf7015a"
+
+[[env.production.kv_namespaces]]
+binding = "RATE_LIMITS"
+id = "a388654d4e4b4f7c88f11672e2375be2"
+
+[[env.production.kv_namespaces]]
+binding = "CIRCUIT_BREAKERS"
+id = "16b346def7b24131a788e359c3ef6073"
+
+# Production Environment Variables
+[env.production.vars]
+CLAUDE_API_ENDPOINT = "https://api.anthropic.com/v1/messages"
+CLAUDE_MODEL = "claude-3-5-sonnet-20241022"
+MAX_QUESTIONS_PER_SESSION = 6
+SESSION_TIMEOUT_SECONDS = 3600
+RATE_LIMIT_PER_MINUTE = 60
+LOG_LEVEL = "info"
+ENABLE_VECTOR_MODE = false
+ENABLE_ANALYTICS = true
+ENABLE_DONATIONS = false
+
+[env.staging]
+name = "what-next-staging"
+
+[env.development]
+name = "what-next-dev"
+
+# D1 Database Configuration
+[[d1_databases]]
+binding = "DB"
+database_name = "what-next-db"
+database_id = "aedb683b-e779-4504-bfb0-e43238890ee5"
+preview_database_id = "aedb683b-e779-4504-bfb0-e43238890ee5"
+
+# KV Storage for Questions and Caching
+[[kv_namespaces]]
+binding = "QUESTIONS"
+id = "7d3f43412f164f408947c132c92bacee"
+
+[[kv_namespaces]]
+binding = "USER_SESSIONS"
+id = "ab30c89be56c43e69d4be5ee08302be9"
+
+[[kv_namespaces]]
+binding = "RECOMMENDATION_CACHE"
+id = "8c9bccdb6ff74cac8c8092cfcdf7015a"
+
+[[kv_namespaces]]
+binding = "RATE_LIMITS"
+id = "a388654d4e4b4f7c88f11672e2375be2"
+
+[[kv_namespaces]]
+binding = "CIRCUIT_BREAKERS"
+id = "16b346def7b24131a788e359c3ef6073"
+
+# Environment Variables
+[vars]
+CLAUDE_API_ENDPOINT = "https://api.anthropic.com/v1/messages"
+CLAUDE_MODEL = "claude-3-5-sonnet-20241022"
+MAX_QUESTIONS_PER_SESSION = 6
+SESSION_TIMEOUT_SECONDS = 3600
+LOG_LEVEL = "info"
+ENABLE_VECTOR_MODE = false
+ENABLE_ANALYTICS = true
+
+# Secrets (use `wrangler secret put` to set these)
+# CLAUDE_API_KEY = "your-claude-api-key"
+# ANALYTICS_SECRET = "your-analytics-secret"
+
+# Resource limits
+[limits]
+cpu_ms = 50
+
+# Cron triggers for maintenance (commented out for now - add after worker is deployed)
+# [[triggers.crons]]
+# name = "cleanup-expired-sessions"
+# cron = "0 */6 * * *"  # Every 6 hours
+
+# [[triggers.crons]]
+# name = "update-question-performance"
+# cron = "0 0 * * *"    # Daily at midnight
+
+# Analytics and monitoring
+[observability]
+enabled = true
+
+# Build configuration
+[build]
+command = "npm run build"
