@@ -130,6 +130,34 @@ export class QuestionService {
           }
         }
       }
+    } else if (domain === 'series') {
+      // For TV series domain, filter based on commitment choice
+      if (choices.length > 0) {
+        const commitmentChoice = choices.find(c => c.questionId === 'series_commitment');
+        if (commitmentChoice) {
+          if (commitmentChoice.choice === 'long') {
+            // For multi-season commitment, use long-form series questions
+            additionalFilter = "AND id IN ('series_genre_long', 'series_complete', 'series_prestige', 'series_episode_long', 'series_platform', 'series_subtitles', 'series_animation')";
+          } else if (commitmentChoice.choice === 'short') {
+            // For weekend binge, use short-form series questions
+            additionalFilter = "AND id IN ('series_genre_short', 'series_intensity', 'series_era_short', 'series_based', 'series_platform', 'series_subtitles', 'series_animation')";
+          }
+        }
+      }
+    } else if (domain === 'documentaries') {
+      // For documentary domain, filter based on purpose choice
+      if (choices.length > 0) {
+        const purposeChoice = choices.find(c => c.questionId === 'doc_purpose');
+        if (purposeChoice) {
+          if (purposeChoice.choice === 'learn') {
+            // For educational purpose, use learning-focused questions
+            additionalFilter = "AND id IN ('doc_topic_edu', 'doc_depth_edu', 'doc_style_edu', 'doc_presenter', 'doc_length', 'doc_visual', 'doc_controversy')";
+          } else if (purposeChoice.choice === 'emotional') {
+            // For emotional purpose, use emotion-focused questions
+            additionalFilter = "AND id IN ('doc_topic_emo', 'doc_tone', 'doc_scope', 'doc_recent', 'doc_length', 'doc_visual', 'doc_controversy')";
+          }
+        }
+      }
     } else if (domain === 'general') {
       // Original logic for general domain
       domainFilter = "AND (domain = 'general' OR domain IS NULL)";
@@ -234,11 +262,79 @@ export class QuestionService {
    * Format question for API response
    */
   formatQuestion(questionData) {
+    let options;
+    
+    // First check if we have predefined options with emojis
+    const predefinedOptions = this.getQuestionOptions(questionData.id);
+    
+    if (predefinedOptions) {
+      // Use predefined options that already have emojis
+      options = predefinedOptions;
+    } else if (questionData.options) {
+      // Parse options from database and convert to expected format
+      try {
+        const dbOptions = JSON.parse(questionData.options);
+        
+        // Check if options are in new format with objects
+        if (dbOptions.left && dbOptions.right) {
+          // Handle both old format {left: "text", right: "text"} 
+          // and new format {left: {text: "text", emoji: "emoji", id: "id"}}
+          if (typeof dbOptions.left === 'object' && typeof dbOptions.right === 'object') {
+            // New format with emoji
+            options = [
+              { 
+                id: dbOptions.left.id || 'left', 
+                text: dbOptions.left.text, 
+                emoji: dbOptions.left.emoji 
+              },
+              { 
+                id: dbOptions.right.id || 'right', 
+                text: dbOptions.right.text, 
+                emoji: dbOptions.right.emoji 
+              }
+            ];
+          } else {
+            // Old format - just text
+            options = [
+              { 
+                id: 'left', 
+                text: dbOptions.left, 
+                emoji: '👈' 
+              },
+              { 
+                id: 'right', 
+                text: dbOptions.right, 
+                emoji: '👉' 
+              }
+            ];
+          }
+        } else {
+          // Fallback if options format is unexpected
+          options = [
+            { id: 'yes', text: 'Yes', emoji: '👍' },
+            { id: 'no', text: 'No', emoji: '👎' }
+          ];
+        }
+      } catch (e) {
+        console.error('Failed to parse question options:', e);
+        options = [
+          { id: 'yes', text: 'Yes', emoji: '👍' },
+          { id: 'no', text: 'No', emoji: '👎' }
+        ];
+      }
+    } else {
+      // Fallback to default options
+      options = [
+        { id: 'yes', text: 'Yes', emoji: '👍' },
+        { id: 'no', text: 'No', emoji: '👎' }
+      ];
+    }
+
     return {
       id: questionData.id,
       text: questionData.question_text || questionData.text,
       type: 'binary_choice',
-      options: this.getQuestionOptions(questionData.id),
+      options: options,
       expectedInfoGain: questionData.expected_info_gain,
       category: questionData.category
     };
@@ -370,13 +466,110 @@ export class QuestionService {
       'movie_rating': [
         { id: 'family', text: 'Family-friendly', emoji: '👨‍👩‍👧‍👦' },
         { id: 'mature', text: 'Mature content OK', emoji: '🔞' }
+      ],
+      
+      // TV Series questions
+      'series_commitment': [
+        { id: 'long', text: 'Multiple seasons', emoji: '📺' },
+        { id: 'short', text: 'Weekend binge', emoji: '⚡' }
+      ],
+      'series_genre_long': [
+        { id: 'fantasy', text: 'Epic fantasy/sci-fi', emoji: '🐉' },
+        { id: 'crime', text: 'Crime/drama', emoji: '🔍' }
+      ],
+      'series_complete': [
+        { id: 'complete', text: 'Completed series', emoji: '✅' },
+        { id: 'ongoing', text: 'Ongoing series', emoji: '🔄' }
+      ],
+      'series_prestige': [
+        { id: 'prestige', text: 'Prestige drama', emoji: '🏆' },
+        { id: 'guilty', text: 'Guilty pleasure', emoji: '🍿' }
+      ],
+      'series_episode_long': [
+        { id: 'long', text: 'Hour-long episodes', emoji: '⏰' },
+        { id: 'short', text: '20-30 min episodes', emoji: '⚡' }
+      ],
+      'series_genre_short': [
+        { id: 'truecrime', text: 'True crime', emoji: '🔪' },
+        { id: 'thriller', text: 'Fictional thriller', emoji: '😱' }
+      ],
+      'series_intensity': [
+        { id: 'light', text: 'Light and fun', emoji: '😄' },
+        { id: 'dark', text: 'Dark and intense', emoji: '😈' }
+      ],
+      'series_era_short': [
+        { id: 'modern', text: 'Modern day', emoji: '📱' },
+        { id: 'period', text: 'Period piece', emoji: '🏛️' }
+      ],
+      'series_based': [
+        { id: 'true', text: 'Based on true events', emoji: '📰' },
+        { id: 'fiction', text: 'Pure fiction', emoji: '🎭' }
+      ],
+      'series_platform': [
+        { id: 'any', text: 'Any platform', emoji: '🌐' },
+        { id: 'major', text: 'Netflix/Prime/Disney+', emoji: '📺' }
+      ],
+      'series_subtitles': [
+        { id: 'english', text: 'English only', emoji: '🇬🇧' },
+        { id: 'international', text: 'Subtitles okay', emoji: '🌍' }
+      ],
+      'series_animation': [
+        { id: 'live', text: 'Live action only', emoji: '🎬' },
+        { id: 'animated', text: 'Animated okay', emoji: '🎨' }
+      ],
+      
+      // Documentary questions
+      'doc_purpose': [
+        { id: 'learn', text: 'Learn something new', emoji: '🧠' },
+        { id: 'emotional', text: 'Be emotionally moved', emoji: '❤️' }
+      ],
+      'doc_topic_edu': [
+        { id: 'science', text: 'Science/nature', emoji: '🔬' },
+        { id: 'history', text: 'History/politics', emoji: '📜' }
+      ],
+      'doc_depth_edu': [
+        { id: 'deep', text: 'Deep dive', emoji: '🤿' },
+        { id: 'broad', text: 'Broad overview', emoji: '🗺️' }
+      ],
+      'doc_style_edu': [
+        { id: 'traditional', text: 'Traditional style', emoji: '🎥' },
+        { id: 'experimental', text: 'Innovative/experimental', emoji: '🎪' }
+      ],
+      'doc_presenter': [
+        { id: 'celebrity', text: 'Celebrity presenter', emoji: '⭐' },
+        { id: 'expert', text: 'Expert interviews', emoji: '👨‍🔬' }
+      ],
+      'doc_topic_emo': [
+        { id: 'inspiring', text: 'Inspiring stories', emoji: '✨' },
+        { id: 'truecrime', text: 'True crime', emoji: '🔍' }
+      ],
+      'doc_tone': [
+        { id: 'uplifting', text: 'Uplifting', emoji: '☀️' },
+        { id: 'dark', text: 'Dark and challenging', emoji: '🌙' }
+      ],
+      'doc_scope': [
+        { id: 'personal', text: 'Personal story', emoji: '👤' },
+        { id: 'global', text: 'Global issue', emoji: '🌍' }
+      ],
+      'doc_recent': [
+        { id: 'current', text: 'Current events', emoji: '📰' },
+        { id: 'historical', text: 'Historical', emoji: '📚' }
+      ],
+      'doc_length': [
+        { id: 'feature', text: 'Feature length', emoji: '🎬' },
+        { id: 'series', text: 'Episodic series', emoji: '📺' }
+      ],
+      'doc_controversy': [
+        { id: 'balanced', text: 'Balanced perspective', emoji: '⚖️' },
+        { id: 'controversial', text: 'Controversial okay', emoji: '🔥' }
+      ],
+      'doc_visual': [
+        { id: 'visual', text: 'Stunning visuals', emoji: '🎨' },
+        { id: 'content', text: 'Content over style', emoji: '📝' }
       ]
     };
 
-    return optionsMap[questionId] || [
-      { id: 'yes', text: 'Yes', emoji: '✅' },
-      { id: 'no', text: 'No', emoji: '❌' }
-    ];
+    return optionsMap[questionId] || null;
   }
 
   /**

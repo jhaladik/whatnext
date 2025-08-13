@@ -1,0 +1,27 @@
+{
+  "name": "What Next - Movie Recommendations",
+  "short_name": "What Next",
+  "description": "Find your perfect movie in 30 seconds with AI-powered recommendations",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#8B5CF6",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["entertainment", "lifestyle"],
+  "screenshots": [
+    {
+      "src": "/screenshot1.png",
+      "type": "image/png",
+      "sizes": "1280x720",
+      "label": "Find movies with AI"
+    }
+  ]
+}

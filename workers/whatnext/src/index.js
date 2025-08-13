@@ -383,9 +383,10 @@ router.post('/api/more-recommendations/:sessionId', asyncHandler(async (request,
     throw new ValidationError('Invalid session ID format');
   }
   
-  // Get request body with excluded movies
+  // Get request body with excluded movies and feedback
   const data = await request.json();
   const excludedMovies = data.excludedMovies || [];
+  const feedback = data.feedback || {}; // { loved: [], liked: [], disliked: [] }
   
   // Retrieve session state
   const stateJson = await env.USER_SESSIONS.get(sessionId);
@@ -395,8 +396,42 @@ router.post('/api/more-recommendations/:sessionId', asyncHandler(async (request,
   
   const userState = UserState.fromJSON(JSON.parse(stateJson));
   
-  // Add excluded movies to userState
+  // Add excluded movies and feedback to userState
   userState.excludedMovies = excludedMovies;
+  userState.feedback = feedback;
+  
+  // Store feedback in database if provided
+  if (feedback.loved && feedback.loved.length > 0) {
+    for (const title of feedback.loved) {
+      await env.DB.prepare(
+        `INSERT INTO recommendation_feedback 
+         (session_id, recommendation_type, feedback_type, timestamp, feedback_text) 
+         VALUES (?, ?, 'loved', ?, ?)`
+      ).bind(sessionId, userState.domain || 'movies', Date.now(), title).run();
+    }
+  }
+  
+  if (feedback.liked && feedback.liked.length > 0) {
+    for (const title of feedback.liked) {
+      await env.DB.prepare(
+        `INSERT INTO recommendation_feedback 
+         (session_id, recommendation_type, feedback_type, timestamp, feedback_text) 
+         VALUES (?, ?, 'liked', ?, ?)`
+      ).bind(sessionId, userState.domain || 'movies', Date.now(), title).run();
+    }
+  }
+  
+  if (feedback.disliked && feedback.disliked.length > 0) {
+    for (const title of feedback.disliked) {
+      await env.DB.prepare(
+        `INSERT INTO recommendation_feedback 
+         (session_id, recommendation_type, feedback_type, timestamp, feedback_text) 
+         VALUES (?, ?, 'disliked', ?, ?)`
+      ).bind(sessionId, userState.domain || 'movies', Date.now(), title).run();
+    }
+  }
+  
+  // No need for viewed anymore - if they gave feedback, they watched it
   
   // Generate recommendations directly without new questions
   const recommendationService = new RecommendationService(env);
@@ -432,11 +467,17 @@ router.post('/api/feedback/:sessionId', asyncHandler(async (request, env) => {
   request.mark('validation');
   
   // Store recommendation feedback
-  if (data.recommendationIndex !== undefined || data.rating) {
+  if (data.recommendationIndex !== undefined || data.rating || data.feedback) {
+    // Map new feedback types to feedback_type column
+    let feedbackType = null;
+    if (data.feedback === 'loved' || data.feedback === 'liked' || data.feedback === 'disliked') {
+      feedbackType = data.feedback;
+    }
+    
     await env.DB.prepare(
       `INSERT INTO recommendation_feedback 
-       (session_id, recommendation_type, user_rating, was_clicked, watch_time_seconds, timestamp, feedback_text) 
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
+       (session_id, recommendation_type, user_rating, was_clicked, watch_time_seconds, timestamp, feedback_text, feedback_type) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
     ).bind(
       sessionId,
       data.type || 'unknown',
@@ -444,7 +485,8 @@ router.post('/api/feedback/:sessionId', asyncHandler(async (request, env) => {
       data.feedback === 'clicked',
       data.actualTimeSpent ? Math.round(data.actualTimeSpent / 1000) : null,
       Date.now(),
-      data.comments || null
+      data.comments || null,
+      feedbackType
     ).run();
   }
   

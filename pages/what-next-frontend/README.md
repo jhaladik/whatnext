@@ -1,13 +1,13 @@
-# What Next - Frontend
+# What Next Frontend - Modern Content Discovery UI 🎬
 
-A beautiful React-based swipe interface for movie recommendations, powered by information theory and AI.
+The beautiful, responsive frontend for What Next - an AI-powered content recommendation engine that helps users find their perfect movie, TV series, or documentary in 30 seconds.
 
 ## 🎯 Current Status: LIVE & OPERATIONAL
 
 ✅ **Production URL**: https://whatnext.pages.dev  
 ✅ **Backend API**: https://what-next-prod.jhaladik.workers.dev  
 ✅ **Status**: Fully functional with all features working
-✅ **Version**: 2.1.0  
+✅ **Version**: 3.0.0  
 ✅ **Last Updated**: December 2024
 
 ## 🚀 Current Production Features

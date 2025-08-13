@@ -164,7 +164,7 @@ export function validateFeedbackRequest(data) {
     feedback: {
       type: 'string',
       required: false,
-      enum: ['clicked', 'ignored', 'saved', 'shared', 'disliked']
+      enum: ['clicked', 'ignored', 'saved', 'shared', 'disliked', 'loved', 'liked']
     },
     actualTimeSpent: {
       type: 'number',

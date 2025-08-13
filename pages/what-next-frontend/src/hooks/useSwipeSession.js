@@ -126,7 +126,7 @@ export const useSwipeSession = () => {
     }
   }, []);
 
-  const getMoreRecommendations = useCallback(async (excludedMovies) => {
+  const getMoreRecommendations = useCallback(async (excludedMovies, feedback = {}) => {
     if (!state.sessionId) {
       toast.error('No active session');
       return;
@@ -135,7 +135,7 @@ export const useSwipeSession = () => {
     setState(prev => ({ ...prev, isLoading: true }));
     
     try {
-      const data = await apiClient.getMoreRecommendations(state.sessionId, excludedMovies);
+      const data = await apiClient.getMoreRecommendations(state.sessionId, excludedMovies, feedback);
       console.log('Got more recommendations:', data);
       
       setState(prev => ({

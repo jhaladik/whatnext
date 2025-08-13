@@ -90,12 +90,12 @@ class WhatNextAPI {
     }
   }
 
-  async getMoreRecommendations(sessionId, excludedMovies) {
+  async getMoreRecommendations(sessionId, excludedMovies, feedback = {}) {
     try {
       const response = await fetch(`${this.baseURL}/api/more-recommendations/${sessionId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ excludedMovies })
+        body: JSON.stringify({ excludedMovies, feedback })
       });
       
       if (!response.ok) {

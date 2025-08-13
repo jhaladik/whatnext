@@ -1,0 +1,468 @@
+{
+  "domains": {
+    "general": {
+      "description": "General content preference questions",
+      "questions": {
+        "cognitive_engagement": {
+          "id": "cognitive_engagement",
+          "text": "What kind of mental engagement are you looking for?",
+          "options": [
+            { "id": "challenge", "text": "Challenge my mind", "emoji": "🧠" },
+            { "id": "entertain", "text": "Entertain without effort", "emoji": "🍿" }
+          ]
+        },
+        "learning_depth": {
+          "id": "learning_depth",
+          "text": "How deep do you want to go?",
+          "options": [
+            { "id": "new", "text": "Learn something completely new", "emoji": "🌟" },
+            { "id": "deeper", "text": "Go deeper into what I know", "emoji": "🔍" }
+          ]
+        },
+        "content_format": {
+          "id": "content_format",
+          "text": "What format do you prefer?",
+          "options": [
+            { "id": "video", "text": "Video content", "emoji": "📺" },
+            { "id": "text", "text": "Text-based content", "emoji": "📖" }
+          ]
+        },
+        "time_commitment": {
+          "id": "time_commitment",
+          "text": "How much time do you have?",
+          "options": [
+            { "id": "quick", "text": "Something quick (under 20 min)", "emoji": "⚡" },
+            { "id": "substantial", "text": "Something substantial", "emoji": "🏛️" }
+          ]
+        },
+        "engagement_type": {
+          "id": "engagement_type",
+          "text": "How do you want to engage?",
+          "options": [
+            { "id": "interactive", "text": "Interactive and engaging", "emoji": "🎮" },
+            { "id": "passive", "text": "Passive and relaxing", "emoji": "🛋️" }
+          ]
+        },
+        "novelty_preference": {
+          "id": "novelty_preference",
+          "text": "What are you in the mood for?",
+          "options": [
+            { "id": "familiar", "text": "Familiar and comforting", "emoji": "🏠" },
+            { "id": "surprise", "text": "A pleasant surprise", "emoji": "🎁" }
+          ]
+        },
+        "social_context": {
+          "id": "social_context",
+          "text": "Who is this for?",
+          "options": [
+            { "id": "personal", "text": "Just for me", "emoji": "👤" },
+            { "id": "social", "text": "To share with others", "emoji": "👥" }
+          ]
+        },
+        "mood_preference": {
+          "id": "mood_preference",
+          "text": "What mood are you in?",
+          "options": [
+            { "id": "uplifting", "text": "Something uplifting", "emoji": "☀️" },
+            { "id": "thoughtful", "text": "Something thought-provoking", "emoji": "🤔" }
+          ]
+        },
+        "complexity_level": {
+          "id": "complexity_level",
+          "text": "What complexity level?",
+          "options": [
+            { "id": "beginner", "text": "Beginner-friendly", "emoji": "🌱" },
+            { "id": "advanced", "text": "Advanced/Expert level", "emoji": "🚀" }
+          ]
+        },
+        "practical_theoretical": {
+          "id": "practical_theoretical",
+          "text": "Practical or theoretical?",
+          "options": [
+            { "id": "practical", "text": "Practical how-to", "emoji": "🔧" },
+            { "id": "theoretical", "text": "Theoretical concepts", "emoji": "📐" }
+          ]
+        },
+        "content_length": {
+          "id": "content_length",
+          "text": "How long should it be?",
+          "options": [
+            { "id": "bite", "text": "Bite-sized content", "emoji": "🍬" },
+            { "id": "immersive", "text": "Longer immersive experience", "emoji": "🌊" }
+          ]
+        },
+        "topic_preference": {
+          "id": "topic_preference",
+          "text": "What topic interests you?",
+          "options": [
+            { "id": "tech", "text": "Technology/Science", "emoji": "💻" },
+            { "id": "arts", "text": "Arts/Humanities", "emoji": "🎨" }
+          ]
+        },
+        "visual_preference": {
+          "id": "visual_preference",
+          "text": "Visual or conceptual?",
+          "options": [
+            { "id": "visual", "text": "Highly visual", "emoji": "👁️" },
+            { "id": "ideas", "text": "Focus on ideas", "emoji": "💭" }
+          ]
+        },
+        "creator_preference": {
+          "id": "creator_preference",
+          "text": "Who should create it?",
+          "options": [
+            { "id": "established", "text": "Established experts", "emoji": "🏆" },
+            { "id": "emerging", "text": "Emerging voices", "emoji": "🌟" }
+          ]
+        },
+        "interactivity_level": {
+          "id": "interactivity_level",
+          "text": "How interactive?",
+          "options": [
+            { "id": "participate", "text": "Actively participate", "emoji": "🙋" },
+            { "id": "observe", "text": "Just observe", "emoji": "👀" }
+          ]
+        }
+      }
+    },
+    "movies": {
+      "description": "Movie-specific preference questions",
+      "questions": {
+        "movie_mood": {
+          "id": "movie_mood",
+          "text": "What mood are you in?",
+          "options": [
+            { "id": "uplifting", "text": "Feel-good vibes", "emoji": "😊" },
+            { "id": "intense", "text": "Edge of my seat", "emoji": "😰" }
+          ]
+        },
+        "movie_genre_light": {
+          "id": "movie_genre_light",
+          "text": "What genre for feel-good?",
+          "options": [
+            { "id": "comedy", "text": "Make me laugh", "emoji": "😂" },
+            { "id": "drama", "text": "Warm my heart", "emoji": "❤️" }
+          ]
+        },
+        "movie_genre_intense": {
+          "id": "movie_genre_intense",
+          "text": "What kind of intensity?",
+          "options": [
+            { "id": "thriller", "text": "Heart-pounding thriller", "emoji": "💓" },
+            { "id": "scifi", "text": "Mind-bending sci-fi", "emoji": "🌌" }
+          ]
+        },
+        "movie_era_modern": {
+          "id": "movie_era_modern",
+          "text": "When was it made?",
+          "options": [
+            { "id": "recent", "text": "Last 5 years", "emoji": "🆕" },
+            { "id": "classic", "text": "Timeless classics", "emoji": "🎭" }
+          ]
+        },
+        "movie_reality_light": {
+          "id": "movie_reality_light",
+          "text": "Realistic or fantasy?",
+          "options": [
+            { "id": "realistic", "text": "Could happen IRL", "emoji": "🌍" },
+            { "id": "fantasy", "text": "Pure imagination", "emoji": "🦄" }
+          ]
+        },
+        "movie_commitment_light": {
+          "id": "movie_commitment_light",
+          "text": "How long do you have?",
+          "options": [
+            { "id": "quick", "text": "Under 2 hours", "emoji": "⚡" },
+            { "id": "epic", "text": "I'm invested", "emoji": "🍿" }
+          ]
+        },
+        "movie_solo_social": {
+          "id": "movie_solo_social",
+          "text": "Watching alone or with others?",
+          "options": [
+            { "id": "solo", "text": "Watching alone", "emoji": "👤" },
+            { "id": "group", "text": "With others", "emoji": "👥" }
+          ]
+        },
+        "movie_pace": {
+          "id": "movie_pace",
+          "text": "What pace?",
+          "options": [
+            { "id": "slow", "text": "Slow burn", "emoji": "🕯️" },
+            { "id": "fast", "text": "Non-stop action", "emoji": "💥" }
+          ]
+        },
+        "movie_stakes": {
+          "id": "movie_stakes",
+          "text": "What's at stake?",
+          "options": [
+            { "id": "personal", "text": "Personal stakes", "emoji": "💔" },
+            { "id": "global", "text": "World-ending", "emoji": "🌎" }
+          ]
+        },
+        "movie_violence": {
+          "id": "movie_violence",
+          "text": "Violence style?",
+          "options": [
+            { "id": "realistic", "text": "Gritty realism", "emoji": "🩸" },
+            { "id": "stylized", "text": "Stylized fantasy", "emoji": "⚔️" }
+          ]
+        },
+        "movie_ending": {
+          "id": "movie_ending",
+          "text": "How should it end?",
+          "options": [
+            { "id": "satisfying", "text": "Satisfying conclusion", "emoji": "🎁" },
+            { "id": "ambiguous", "text": "Open to interpretation", "emoji": "❓" }
+          ]
+        },
+        "movie_franchise": {
+          "id": "movie_franchise",
+          "text": "Standalone or franchise?",
+          "options": [
+            { "id": "standalone", "text": "Stand-alone story", "emoji": "📖" },
+            { "id": "universe", "text": "Part of universe", "emoji": "🌐" }
+          ]
+        },
+        "movie_cast": {
+          "id": "movie_cast",
+          "text": "Famous actors or unknowns?",
+          "options": [
+            { "id": "stars", "text": "Star-studded", "emoji": "⭐" },
+            { "id": "unknown", "text": "Hidden gems", "emoji": "💎" }
+          ]
+        },
+        "movie_subtitles": {
+          "id": "movie_subtitles",
+          "text": "Language preference?",
+          "options": [
+            { "id": "english", "text": "English only", "emoji": "🇬🇧" },
+            { "id": "foreign", "text": "Foreign films OK", "emoji": "🌍" }
+          ]
+        },
+        "movie_rating": {
+          "id": "movie_rating",
+          "text": "Content rating?",
+          "options": [
+            { "id": "family", "text": "Family-friendly", "emoji": "👨‍👩‍👧‍👦" },
+            { "id": "mature", "text": "Mature content OK", "emoji": "🔞" }
+          ]
+        }
+      }
+    },
+    "series": {
+      "description": "TV Series preference questions",
+      "questions": {
+        "series_commitment": {
+          "id": "series_commitment",
+          "text": "How much can you commit?",
+          "options": [
+            { "id": "long", "text": "Multiple seasons", "emoji": "📺" },
+            { "id": "short", "text": "Weekend binge", "emoji": "⚡" }
+          ]
+        },
+        "series_genre_long": {
+          "id": "series_genre_long",
+          "text": "What long-form genre?",
+          "options": [
+            { "id": "fantasy", "text": "Epic fantasy/sci-fi", "emoji": "🐉" },
+            { "id": "crime", "text": "Crime/drama", "emoji": "🔍" }
+          ]
+        },
+        "series_complete": {
+          "id": "series_complete",
+          "text": "Complete or ongoing?",
+          "options": [
+            { "id": "complete", "text": "Completed series", "emoji": "✅" },
+            { "id": "ongoing", "text": "Ongoing series", "emoji": "🔄" }
+          ]
+        },
+        "series_prestige": {
+          "id": "series_prestige",
+          "text": "Prestige or fun?",
+          "options": [
+            { "id": "prestige", "text": "Prestige drama", "emoji": "🏆" },
+            { "id": "guilty", "text": "Guilty pleasure", "emoji": "🍿" }
+          ]
+        },
+        "series_episode_long": {
+          "id": "series_episode_long",
+          "text": "Episode length?",
+          "options": [
+            { "id": "long", "text": "Hour-long episodes", "emoji": "⏰" },
+            { "id": "short", "text": "20-30 min episodes", "emoji": "⚡" }
+          ]
+        },
+        "series_genre_short": {
+          "id": "series_genre_short",
+          "text": "What short series genre?",
+          "options": [
+            { "id": "truecrime", "text": "True crime", "emoji": "🔪" },
+            { "id": "thriller", "text": "Fictional thriller", "emoji": "😱" }
+          ]
+        },
+        "series_intensity": {
+          "id": "series_intensity",
+          "text": "Light or dark?",
+          "options": [
+            { "id": "light", "text": "Light and fun", "emoji": "😄" },
+            { "id": "dark", "text": "Dark and intense", "emoji": "😈" }
+          ]
+        },
+        "series_era_short": {
+          "id": "series_era_short",
+          "text": "When is it set?",
+          "options": [
+            { "id": "modern", "text": "Modern day", "emoji": "📱" },
+            { "id": "period", "text": "Period piece", "emoji": "🏛️" }
+          ]
+        },
+        "series_based": {
+          "id": "series_based",
+          "text": "Based on true events?",
+          "options": [
+            { "id": "true", "text": "Based on true events", "emoji": "📰" },
+            { "id": "fiction", "text": "Pure fiction", "emoji": "🎭" }
+          ]
+        },
+        "series_platform": {
+          "id": "series_platform",
+          "text": "Platform preference?",
+          "options": [
+            { "id": "any", "text": "Any platform", "emoji": "🌐" },
+            { "id": "major", "text": "Netflix/Prime/Disney+", "emoji": "📺" }
+          ]
+        },
+        "series_subtitles": {
+          "id": "series_subtitles",
+          "text": "Language preference?",
+          "options": [
+            { "id": "english", "text": "English only", "emoji": "🇬🇧" },
+            { "id": "international", "text": "Subtitles okay", "emoji": "🌍" }
+          ]
+        },
+        "series_animation": {
+          "id": "series_animation",
+          "text": "Live action or animated?",
+          "options": [
+            { "id": "live", "text": "Live action only", "emoji": "🎬" },
+            { "id": "animated", "text": "Animated okay", "emoji": "🎨" }
+          ]
+        }
+      }
+    },
+    "documentaries": {
+      "description": "Documentary preference questions",
+      "questions": {
+        "doc_purpose": {
+          "id": "doc_purpose",
+          "text": "What's your purpose?",
+          "options": [
+            { "id": "learn", "text": "Learn something new", "emoji": "🧠" },
+            { "id": "emotional", "text": "Be emotionally moved", "emoji": "❤️" }
+          ]
+        },
+        "doc_topic_edu": {
+          "id": "doc_topic_edu",
+          "text": "Educational topic?",
+          "options": [
+            { "id": "science", "text": "Science/nature", "emoji": "🔬" },
+            { "id": "history", "text": "History/politics", "emoji": "📜" }
+          ]
+        },
+        "doc_depth_edu": {
+          "id": "doc_depth_edu",
+          "text": "How deep?",
+          "options": [
+            { "id": "deep", "text": "Deep dive", "emoji": "🤿" },
+            { "id": "broad", "text": "Broad overview", "emoji": "🗺️" }
+          ]
+        },
+        "doc_style_edu": {
+          "id": "doc_style_edu",
+          "text": "Documentary style?",
+          "options": [
+            { "id": "traditional", "text": "Traditional style", "emoji": "🎥" },
+            { "id": "experimental", "text": "Innovative/experimental", "emoji": "🎪" }
+          ]
+        },
+        "doc_presenter": {
+          "id": "doc_presenter",
+          "text": "Who presents?",
+          "options": [
+            { "id": "celebrity", "text": "Celebrity presenter", "emoji": "⭐" },
+            { "id": "expert", "text": "Expert interviews", "emoji": "👨‍🔬" }
+          ]
+        },
+        "doc_topic_emo": {
+          "id": "doc_topic_emo",
+          "text": "Emotional topic?",
+          "options": [
+            { "id": "inspiring", "text": "Inspiring stories", "emoji": "✨" },
+            { "id": "truecrime", "text": "True crime", "emoji": "🔍" }
+          ]
+        },
+        "doc_tone": {
+          "id": "doc_tone",
+          "text": "What tone?",
+          "options": [
+            { "id": "uplifting", "text": "Uplifting", "emoji": "☀️" },
+            { "id": "dark", "text": "Dark and challenging", "emoji": "🌙" }
+          ]
+        },
+        "doc_scope": {
+          "id": "doc_scope",
+          "text": "What scope?",
+          "options": [
+            { "id": "personal", "text": "Personal story", "emoji": "👤" },
+            { "id": "global", "text": "Global issue", "emoji": "🌍" }
+          ]
+        },
+        "doc_recent": {
+          "id": "doc_recent",
+          "text": "When did it happen?",
+          "options": [
+            { "id": "current", "text": "Current events", "emoji": "📰" },
+            { "id": "historical", "text": "Historical", "emoji": "📚" }
+          ]
+        },
+        "doc_length": {
+          "id": "doc_length",
+          "text": "How long?",
+          "options": [
+            { "id": "feature", "text": "Feature length", "emoji": "🎬" },
+            { "id": "series", "text": "Episodic series", "emoji": "📺" }
+          ]
+        },
+        "doc_controversy": {
+          "id": "doc_controversy",
+          "text": "Controversial topics?",
+          "options": [
+            { "id": "balanced", "text": "Balanced perspective", "emoji": "⚖️" },
+            { "id": "controversial", "text": "Controversial okay", "emoji": "🔥" }
+          ]
+        },
+        "doc_visual": {
+          "id": "doc_visual",
+          "text": "Visual importance?",
+          "options": [
+            { "id": "visual", "text": "Stunning visuals", "emoji": "🎨" },
+            { "id": "content", "text": "Content over style", "emoji": "📝" }
+          ]
+        }
+      }
+    }
+  },
+  "metadata": {
+    "total_questions": 53,
+    "domains_count": 4,
+    "questions_per_domain": {
+      "general": 15,
+      "movies": 15,
+      "series": 12,
+      "documentaries": 11
+    },
+    "extraction_date": "2024-01-13",
+    "source": "workers/whatnext/src/services/questionService.js"
+  }
+}

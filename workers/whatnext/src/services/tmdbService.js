@@ -293,4 +293,219 @@ export class TMDBService {
       return [];
     }
   }
+
+  async enrichSeries(recommendations) {
+    if (!this.apiKey) {
+      console.warn('TMDB API key not configured, returning unenriched recommendations');
+      return recommendations;
+    }
+
+    try {
+      const enrichedRecommendations = await Promise.all(
+        recommendations.map(async (series) => {
+          try {
+            // Check cache first
+            const cacheKey = `tmdb:series:${series.title}:${series.year || ''}`;
+            const cached = await this.cache.get(cacheKey);
+            
+            if (cached) {
+              const cachedData = JSON.parse(cached);
+              return { ...series, ...cachedData };
+            }
+
+            // Search for the series
+            const searchResult = await this.searchContent(
+              series.title, 
+              'tv',
+              series.year
+            );
+
+            if (!searchResult) {
+              return series;
+            }
+
+            // Get detailed information
+            const details = await this.getContentDetails(
+              searchResult.id,
+              'tv'
+            );
+
+            // Get streaming providers
+            const streamingProviders = await this.getStreamingProviders(
+              searchResult.id,
+              'tv'
+            );
+
+            // Extract cast and crew information
+            const cast = details?.credits?.cast?.slice(0, 5).map(actor => ({
+              name: actor.name,
+              character: actor.character,
+              profile_url: actor.profile_path 
+                ? `${this.imageBaseUrl}/w185${actor.profile_path}`
+                : null
+            })) || [];
+            
+            const creator = details?.created_by?.[0]?.name || null;
+            
+            const enrichedData = {
+              tmdb_id: searchResult.id,
+              poster_url: searchResult.poster_path 
+                ? `${this.imageBaseUrl}/w500${searchResult.poster_path}`
+                : null,
+              backdrop_url: searchResult.backdrop_path
+                ? `${this.imageBaseUrl}/w1280${searchResult.backdrop_path}`
+                : null,
+              overview: searchResult.overview,
+              vote_average: searchResult.vote_average,
+              vote_count: searchResult.vote_count,
+              first_air_date: searchResult.first_air_date,
+              genres: details?.genres?.map(g => g.name) || [],
+              episode_run_time: details?.episode_run_time?.[0] || null,
+              number_of_seasons: details?.number_of_seasons || series.seasons,
+              number_of_episodes: details?.number_of_episodes || series.episodes,
+              tagline: details?.tagline || null,
+              trailer_url: details?.trailer_url || null,
+              streaming: streamingProviders,
+              popularity: searchResult.popularity,
+              cast: cast,
+              creator: creator,
+              status: details?.status || series.status,
+              original_language: searchResult.original_language || null,
+              networks: details?.networks?.map(n => n.name) || [],
+              type: 'series'
+            };
+
+            // Cache the enriched data for 24 hours
+            await this.cache.put(
+              cacheKey,
+              JSON.stringify(enrichedData),
+              { expirationTtl: 86400 }
+            );
+
+            return { ...series, ...enrichedData };
+          } catch (error) {
+            console.error(`Error enriching series "${series.title}":`, error);
+            return series;
+          }
+        })
+      );
+
+      return enrichedRecommendations;
+    } catch (error) {
+      console.error('Error enriching series:', error);
+      return recommendations;
+    }
+  }
+
+  async enrichDocumentaries(recommendations) {
+    if (!this.apiKey) {
+      console.warn('TMDB API key not configured, returning unenriched recommendations');
+      return recommendations;
+    }
+
+    try {
+      const enrichedRecommendations = await Promise.all(
+        recommendations.map(async (doc) => {
+          try {
+            // Check cache first
+            const cacheKey = `tmdb:doc:${doc.title}:${doc.year || ''}`;
+            const cached = await this.cache.get(cacheKey);
+            
+            if (cached) {
+              const cachedData = JSON.parse(cached);
+              return { ...doc, ...cachedData };
+            }
+
+            // Search for the documentary (could be movie or series)
+            let searchResult = await this.searchContent(
+              doc.title, 
+              'movie',
+              doc.year
+            );
+
+            let contentType = 'movie';
+            
+            // If not found as movie, try as TV series
+            if (!searchResult) {
+              searchResult = await this.searchContent(
+                doc.title,
+                'tv',
+                doc.year
+              );
+              contentType = 'tv';
+            }
+
+            if (!searchResult) {
+              return doc;
+            }
+
+            // Get detailed information
+            const details = await this.getContentDetails(
+              searchResult.id,
+              contentType
+            );
+
+            // Get streaming providers
+            const streamingProviders = await this.getStreamingProviders(
+              searchResult.id,
+              contentType
+            );
+
+            // Extract relevant crew for documentaries
+            const director = details?.credits?.crew?.find(
+              person => person.job === 'Director'
+            );
+            
+            const enrichedData = {
+              tmdb_id: searchResult.id,
+              poster_url: searchResult.poster_path 
+                ? `${this.imageBaseUrl}/w500${searchResult.poster_path}`
+                : null,
+              backdrop_url: searchResult.backdrop_path
+                ? `${this.imageBaseUrl}/w1280${searchResult.backdrop_path}`
+                : null,
+              overview: searchResult.overview,
+              vote_average: searchResult.vote_average,
+              vote_count: searchResult.vote_count,
+              release_date: searchResult.release_date || searchResult.first_air_date,
+              genres: details?.genres?.map(g => g.name) || [],
+              runtime: details?.runtime || (details?.episode_run_time?.[0] ? `${details.episode_run_time[0]} min per episode` : doc.runtime),
+              tagline: details?.tagline || null,
+              trailer_url: details?.trailer_url || null,
+              streaming: streamingProviders,
+              popularity: searchResult.popularity,
+              director: director?.name || null,
+              production_companies: details?.production_companies?.map(c => c.name) || [],
+              status: details?.status || null,
+              original_language: searchResult.original_language || null,
+              type: 'documentary'
+            };
+
+            // Add series-specific info if it's a docu-series
+            if (contentType === 'tv') {
+              enrichedData.number_of_seasons = details?.number_of_seasons;
+              enrichedData.number_of_episodes = details?.number_of_episodes;
+            }
+
+            // Cache the enriched data for 24 hours
+            await this.cache.put(
+              cacheKey,
+              JSON.stringify(enrichedData),
+              { expirationTtl: 86400 }
+            );
+
+            return { ...doc, ...enrichedData };
+          } catch (error) {
+            console.error(`Error enriching documentary "${doc.title}":`, error);
+            return doc;
+          }
+        })
+      );
+
+      return enrichedRecommendations;
+    } catch (error) {
+      console.error('Error enriching documentaries:', error);
+      return recommendations;
+    }
+  }
 }

@@ -1,0 +1,204 @@
+{
+  "domain": "movies",
+  "description": "Actual movie question flow with branching logic as implemented in the app",
+  "max_questions": 6,
+  "flow": {
+    "start": {
+      "question_id": "movie_mood",
+      "question_text": "What mood are you in?",
+      "options": [
+        {
+          "id": "uplifting",
+          "text": "Feel-good vibes",
+          "emoji": "😊",
+          "leads_to": "uplifting_path"
+        },
+        {
+          "id": "intense",
+          "text": "Edge of my seat",
+          "emoji": "😰",
+          "leads_to": "intense_path"
+        }
+      ]
+    },
+    "branches": {
+      "uplifting_path": {
+        "description": "Questions for users who selected 'Feel-good vibes'",
+        "question_pool": [
+          {
+            "question_id": "movie_genre_light",
+            "question_text": "What genre for feel-good?",
+            "options": [
+              { "id": "comedy", "text": "Make me laugh", "emoji": "😂" },
+              { "id": "drama", "text": "Warm my heart", "emoji": "❤️" }
+            ],
+            "order": 2
+          },
+          {
+            "question_id": "movie_era_modern",
+            "question_text": "When was it made?",
+            "options": [
+              { "id": "recent", "text": "Last 5 years", "emoji": "🆕" },
+              { "id": "classic", "text": "Timeless classics", "emoji": "🎭" }
+            ],
+            "order": 3
+          },
+          {
+            "question_id": "movie_reality_light",
+            "question_text": "Realistic or fantasy?",
+            "options": [
+              { "id": "realistic", "text": "Could happen IRL", "emoji": "🌍" },
+              { "id": "fantasy", "text": "Pure imagination", "emoji": "🦄" }
+            ],
+            "order": 4
+          },
+          {
+            "question_id": "movie_commitment_light",
+            "question_text": "How long do you have?",
+            "options": [
+              { "id": "quick", "text": "Under 2 hours", "emoji": "⚡" },
+              { "id": "epic", "text": "I'm invested", "emoji": "🍿" }
+            ],
+            "order": 5
+          },
+          {
+            "question_id": "movie_solo_social",
+            "question_text": "Watching alone or with others?",
+            "options": [
+              { "id": "solo", "text": "Watching alone", "emoji": "👤" },
+              { "id": "group", "text": "With others", "emoji": "👥" }
+            ],
+            "order": 6
+          }
+        ],
+        "sql_filter": "AND id IN ('movie_genre_light', 'movie_era_modern', 'movie_reality_light', 'movie_commitment_light', 'movie_solo_social')"
+      },
+      "intense_path": {
+        "description": "Questions for users who selected 'Edge of my seat'",
+        "question_pool": [
+          {
+            "question_id": "movie_genre_intense",
+            "question_text": "What kind of intensity?",
+            "options": [
+              { "id": "thriller", "text": "Heart-pounding thriller", "emoji": "💓" },
+              { "id": "scifi", "text": "Mind-bending sci-fi", "emoji": "🌌" }
+            ],
+            "order": 2
+          },
+          {
+            "question_id": "movie_pace",
+            "question_text": "What pace?",
+            "options": [
+              { "id": "slow", "text": "Slow burn", "emoji": "🕯️" },
+              { "id": "fast", "text": "Non-stop action", "emoji": "💥" }
+            ],
+            "order": 3
+          },
+          {
+            "question_id": "movie_stakes",
+            "question_text": "What's at stake?",
+            "options": [
+              { "id": "personal", "text": "Personal stakes", "emoji": "💔" },
+              { "id": "global", "text": "World-ending", "emoji": "🌎" }
+            ],
+            "order": 4
+          },
+          {
+            "question_id": "movie_violence",
+            "question_text": "Violence style?",
+            "options": [
+              { "id": "realistic", "text": "Gritty realism", "emoji": "🩸" },
+              { "id": "stylized", "text": "Stylized fantasy", "emoji": "⚔️" }
+            ],
+            "order": 5
+          },
+          {
+            "question_id": "movie_ending",
+            "question_text": "How should it end?",
+            "options": [
+              { "id": "satisfying", "text": "Satisfying conclusion", "emoji": "🎁" },
+              { "id": "ambiguous", "text": "Open to interpretation", "emoji": "❓" }
+            ],
+            "order": 6
+          }
+        ],
+        "sql_filter": "AND id IN ('movie_genre_intense', 'movie_pace', 'movie_stakes', 'movie_violence', 'movie_ending')"
+      }
+    },
+    "additional_questions": {
+      "description": "Questions that may appear regardless of path, based on information gain scores",
+      "pool": [
+        {
+          "question_id": "movie_franchise",
+          "question_text": "Standalone or franchise?",
+          "options": [
+            { "id": "standalone", "text": "Stand-alone story", "emoji": "📖" },
+            { "id": "universe", "text": "Part of universe", "emoji": "🌐" }
+          ]
+        },
+        {
+          "question_id": "movie_cast",
+          "question_text": "Famous actors or unknowns?",
+          "options": [
+            { "id": "stars", "text": "Star-studded", "emoji": "⭐" },
+            { "id": "unknown", "text": "Hidden gems", "emoji": "💎" }
+          ]
+        },
+        {
+          "question_id": "movie_subtitles",
+          "question_text": "Language preference?",
+          "options": [
+            { "id": "english", "text": "English only", "emoji": "🇬🇧" },
+            { "id": "foreign", "text": "Foreign films OK", "emoji": "🌍" }
+          ]
+        },
+        {
+          "question_id": "movie_rating",
+          "question_text": "Content rating?",
+          "options": [
+            { "id": "family", "text": "Family-friendly", "emoji": "👨‍👩‍👧‍👦" },
+            { "id": "mature", "text": "Mature content OK", "emoji": "🔞" }
+          ]
+        }
+      ]
+    }
+  },
+  "implementation_details": {
+    "source_file": "workers/whatnext/src/services/questionService.js",
+    "method": "getCandidateQuestions",
+    "lines": "119-132",
+    "algorithm": "Questions are selected based on expected information gain, with branching determined by the initial mood choice",
+    "notes": [
+      "After the first question (movie_mood), the system filters the question pool based on the user's choice",
+      "Questions are ranked by expected_info_gain in the database",
+      "Maximum of 6 questions before showing recommendations",
+      "The system may show fewer questions if entropy drops below 0.3"
+    ]
+  },
+  "typical_flow_examples": [
+    {
+      "example": "Feel-good comedy path",
+      "sequence": [
+        "movie_mood → uplifting",
+        "movie_genre_light → comedy",
+        "movie_era_modern → recent",
+        "movie_reality_light → realistic",
+        "movie_commitment_light → quick",
+        "movie_solo_social → group"
+      ],
+      "result": "Recent, realistic comedies under 2 hours for group watching"
+    },
+    {
+      "example": "Intense thriller path",
+      "sequence": [
+        "movie_mood → intense",
+        "movie_genre_intense → thriller",
+        "movie_pace → fast",
+        "movie_stakes → personal",
+        "movie_violence → realistic",
+        "movie_ending → satisfying"
+      ],
+      "result": "Fast-paced thrillers with personal stakes, realistic violence, and satisfying endings"
+    }
+  ]
+}

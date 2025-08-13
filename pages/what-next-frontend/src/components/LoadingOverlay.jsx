@@ -1,17 +1,22 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 
-const LoadingOverlay = ({ show, type = 'recommendations' }) => {
+const LoadingOverlay = ({ show, type = 'recommendations', domain = 'movies' }) => {
   const [messageIndex, setMessageIndex] = useState(0);
+  
+  // Get domain-specific content type
+  const contentType = domain === 'series' ? 'shows' : 
+                     domain === 'documentaries' ? 'documentaries' : 
+                     'movies';
   
   const messages = type === 'recommendations' ? [
     "Analyzing your preferences...",
-    "Searching through thousands of movies...",
+    `Searching through thousands of ${contentType}...`,
     "Finding perfect matches...",
     "Almost there...",
     "Preparing your recommendations..."
   ] : [
-    "Finding more great movies...",
+    `Finding more great ${contentType}...`,
     "Excluding what you've already seen...",
     "Matching your taste profile...",
     "Almost ready..."
@@ -37,13 +42,13 @@ const LoadingOverlay = ({ show, type = 'recommendations' }) => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 flex items-center justify-center"
+          className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center"
         >
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
-            className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl"
+            className="bg-black/60 backdrop-blur-xl rounded-3xl p-8 max-w-md w-full mx-4 shadow-2xl border border-white/10"
           >
             {/* AI Brain Animation */}
             <div className="flex justify-center mb-6">
@@ -52,25 +57,25 @@ const LoadingOverlay = ({ show, type = 'recommendations' }) => {
                 <motion.div
                   animate={{ rotate: 360 }}
                   transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                  className="absolute inset-0 rounded-full border-4 border-primary-200"
+                  className="absolute inset-0 rounded-full border-4 border-purple-500/30"
                 >
-                  <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-primary-600 rounded-full" />
+                  <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-purple-400 rounded-full" />
                 </motion.div>
                 
                 {/* Middle ring */}
                 <motion.div
                   animate={{ rotate: -360 }}
                   transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                  className="absolute inset-2 rounded-full border-4 border-primary-300"
+                  className="absolute inset-2 rounded-full border-4 border-pink-500/30"
                 >
-                  <div className="absolute top-0 right-0 w-2 h-2 bg-primary-500 rounded-full" />
+                  <div className="absolute top-0 right-0 w-2 h-2 bg-pink-400 rounded-full" />
                 </motion.div>
                 
                 {/* Inner core */}
                 <motion.div
                   animate={{ scale: [1, 1.2, 1] }}
                   transition={{ duration: 1.5, repeat: Infinity }}
-                  className="absolute inset-4 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center"
+                  className="absolute inset-4 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center"
                 >
                   {/* AI Icon */}
                   <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -89,7 +94,7 @@ const LoadingOverlay = ({ show, type = 'recommendations' }) => {
               exit={{ opacity: 0, y: -10 }}
               className="text-center"
             >
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">
+              <h3 className="text-lg font-semibold text-white mb-2">
                 {messages[messageIndex]}
               </h3>
             </motion.div>
@@ -105,7 +110,7 @@ const LoadingOverlay = ({ show, type = 'recommendations' }) => {
                   }}
                   transition={{ duration: 0.5 }}
                   className={`w-2 h-2 rounded-full ${
-                    i <= messageIndex ? 'bg-primary-600' : 'bg-gray-300'
+                    i <= messageIndex ? 'bg-gradient-to-r from-purple-400 to-pink-400' : 'bg-gray-600'
                   }`}
                 />
               ))}
@@ -116,9 +121,9 @@ const LoadingOverlay = ({ show, type = 'recommendations' }) => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.5 }}
-              className="text-xs text-gray-500 text-center mt-4"
+              className="text-xs text-gray-400 text-center mt-4"
             >
-              💡 Tip: Our AI analyzes over 50 movie attributes to find your perfect match!
+              💡 Tip: Our AI analyzes over 50 content attributes to find your perfect match!
             </motion.p>
           </motion.div>
         </motion.div>

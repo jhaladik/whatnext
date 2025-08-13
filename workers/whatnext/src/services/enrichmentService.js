@@ -22,6 +22,12 @@ export class EnrichmentService {
         case 'movies':
           return await this.tmdb.enrichMovies(recommendations);
         
+        case 'series':
+          return await this.tmdb.enrichSeries(recommendations);
+        
+        case 'documentaries':
+          return await this.tmdb.enrichDocumentaries(recommendations);
+        
         case 'books':
           // Future: Goodreads enrichment
           return await this.enrichBooks(recommendations);
