@@ -197,7 +197,7 @@ const ModernTermsOfService = () => {
                 </ul>
               </motion.section>
               
-              {/* Section 6 */}
+              {/* Section 6 - Data Sources & Attribution */}
               <motion.section
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -206,6 +206,48 @@ const ModernTermsOfService = () => {
                 <div className="flex items-center mb-3">
                   <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-sm font-bold mr-3">
                     6
+                  </div>
+                  <h2 className="text-xl font-semibold text-white">Data Sources & Attribution</h2>
+                </div>
+                <div className="ml-11 space-y-3">
+                  <p className="text-gray-300">
+                    Our movie recommendation service uses data from The Movie Database (TMDB).
+                  </p>
+                  <div className="p-4 bg-blue-900/20 backdrop-blur-md rounded-xl border border-blue-500/20">
+                    <p className="text-blue-300 font-semibold mb-2">TMDB Attribution</p>
+                    <p className="text-gray-300 text-sm mb-2">
+                      This product uses the TMDB API but is not endorsed or certified by TMDB.
+                    </p>
+                    <p className="text-gray-400 text-xs">
+                      Movie information, posters, and metadata are provided by The Movie Database (themoviedb.org).
+                    </p>
+                  </div>
+                  <ul className="space-y-2 mt-3">
+                    <li className="flex items-start">
+                      <span className="text-blue-400 mr-2 mt-1">▸</span>
+                      <span className="text-gray-300">Movie titles, descriptions, and metadata sourced from TMDB</span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="text-blue-400 mr-2 mt-1">▸</span>
+                      <span className="text-gray-300">Recommendations are generated using AI based on TMDB data</span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="text-blue-400 mr-2 mt-1">▸</span>
+                      <span className="text-gray-300">We are not affiliated with TMDB or any movie studios</span>
+                    </li>
+                  </ul>
+                </div>
+              </motion.section>
+              
+              {/* Section 7 - Contact */}
+              <motion.section
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.7 }}
+              >
+                <div className="flex items-center mb-3">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-sm font-bold mr-3">
+                    7
                   </div>
                   <h2 className="text-xl font-semibold text-white">Contact</h2>
                 </div>
@@ -221,7 +263,7 @@ const ModernTermsOfService = () => {
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 0.7 }}
+                transition={{ delay: 0.8 }}
                 className="pt-6 border-t border-white/10"
               >
                 <p className="text-sm text-gray-500 text-center">
@@ -234,7 +276,7 @@ const ModernTermsOfService = () => {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.8 }}
+              transition={{ delay: 0.9 }}
               className="mt-10 flex justify-center"
             >
               <motion.button

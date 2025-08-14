@@ -1,0 +1,42 @@
+name = "whatnext-vectorize"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Conservative rate limits to protect existing TMDB API usage
+[vars]
+TMDB_RATE_LIMIT_PER_SECOND = "2"  # Very conservative: 2 requests/second (vs 4 allowed)
+TMDB_BURST_DELAY_MS = "1000"      # 1 second between bursts
+OPENAI_BATCH_SIZE = "50"          # Smaller batches for embeddings
+VECTORIZE_BATCH_SIZE = "500"      # Smaller upload batches
+MAX_DAILY_NEW_MOVIES = "50"       # Limit daily updates to 50 movies
+
+# Bindings
+[[vectorize]]
+binding = "MOVIE_VECTORS"
+index_name = "whatnext-movies"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "whatnext-vectorize"
+database_id = "ab1b6bb2-7cd7-4d08-85fc-1bc91d924aae"
+
+[[kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "afc5606c5a4f43278e783a1a054c1d0e"
+
+[[kv_namespaces]]
+binding = "PROCESSING_QUEUE"
+id = "44480b4fc3994e388d04c124e77331c4"
+
+# Scheduled workers for updates
+[triggers]
+crons = ["0 3 * * *"]  # Run at 3 AM daily (offset from main worker)
+
+# Development
+[env.development]
+vars = { ENVIRONMENT = "development", TMDB_RATE_LIMIT_PER_SECOND = "1" }
+
+# Production
+[env.production]
+vars = { ENVIRONMENT = "production" }
