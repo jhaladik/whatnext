@@ -1,4 +1,4 @@
-// src/index.js - Movie Recommendations Worker
+// src/index.js - Movie Recommendations Worker with Enhanced UX
 import { Router } from 'itty-router';
 import { VectorSearchService } from './services/vectorSearchService.js';
 import { PreferenceToVectorConverter } from './services/preferenceToVectorConverter.js';
@@ -6,6 +6,14 @@ import { MovieEnrichmentService } from './services/movieEnrichmentService.js';
 import { MovieQuestionService } from './services/movieQuestionService.js';
 import { DomainService } from './services/domainService.js';
 import { AnalyticsService } from './services/analyticsService.js';
+
+// New enhanced services
+import { EmotionalMappingService } from './services/emotionalMappingService.js';
+import { MomentCaptureService } from './services/momentCaptureService.js';
+import { SurpriseEngine } from './services/surpriseEngine.js';
+import { RefinementEngine } from './services/refinementEngine.js';
+import { MomentValidationService } from './services/momentValidationService.js';
+
 import { UserState } from './models/userState.js';
 import { RateLimiter } from './utils/rateLimiter.js';
 import { 
@@ -77,7 +85,7 @@ router.get('/api/domains', asyncHandler(async (request, env) => {
   return wrapResponse(request, response, env);
 }));
 
-// Start movie recommendation session
+// Start movie recommendation session with enhanced moment capture
 router.post('/api/movies/start', asyncHandler(async (request, env) => {
   // Rate limiting
   const identifier = request.headers.get('CF-Connecting-IP') || 'unknown';
@@ -99,38 +107,50 @@ router.post('/api/movies/start', asyncHandler(async (request, env) => {
     throw new ValidationError('Invalid JSON in request body', { error: e.message });
   }
   
-  const { domain = 'movies', context = {} } = data;
+  const { 
+    domain = 'movies', 
+    context = {}, 
+    questionFlow = 'standard' // Can be: standard, quick, deep, surprise, visual
+  } = data;
   
   // Generate session ID
   const sessionId = crypto.randomUUID();
   
-  // Initialize services
+  // Initialize enhanced services
+  const momentCapture = new MomentCaptureService(env);
   const domainService = new DomainService(env);
-  const questionService = new MovieQuestionService(env);
   
-  // Get first question for domain
-  const questions = await questionService.getQuestions(domain);
-  const firstQuestion = questions[0];
+  // Generate adaptive question flow based on context
+  const questionFlowData = await momentCapture.generateQuestionFlow(context, questionFlow);
+  const firstQuestion = questionFlowData.questions[0];
   
-  // Initialize session
+  // Initialize session with enhanced context
   const userState = new UserState(sessionId);
   userState.domain = domain;
   userState.currentQuestionIndex = 0;
-  userState.context = context;
-  userState.totalQuestions = questions.length;
+  userState.context = { ...context, ...questionFlowData.context };
+  userState.totalQuestions = questionFlowData.questions.length;
+  userState.questionFlow = questionFlow;
+  userState.flowType = questionFlowData.flowType;
   
-  // Store session
+  // Store session with question flow
   await env.USER_SESSIONS.put(
     `session:${sessionId}`,
-    JSON.stringify(userState),
+    JSON.stringify({
+      ...userState,
+      questions: questionFlowData.questions
+    }),
     { expirationTtl: env.SESSION_TIMEOUT_SECONDS || 3600 }
   );
   
   const response = Response.json({
     sessionId,
     domain,
+    greeting: questionFlowData.greeting,
     question: firstQuestion,
-    progress: { current: 1, total: questions.length }
+    progress: { current: 1, total: questionFlowData.questions.length },
+    flowType: questionFlowData.flowType,
+    context: questionFlowData.context
   });
   
   return wrapResponse(request, response, env);
@@ -205,11 +225,18 @@ router.post('/api/movies/answer/:sessionId', asyncHandler(async (request, env) =
     
     return wrapResponse(request, response, env);
   } else {
-    // Generate recommendations
-    const recommendations = await generateMovieRecommendations(userState, env);
+    // Generate enhanced recommendations
+    const recommendationResult = await generateMovieRecommendations(userState, env);
     
-    // Update session with recommendations generated timestamp
+    // Update session with recommendations and profile
     userState.recommendationsGeneratedAt = Date.now();
+    userState.lastRecommendations = recommendationResult.recommendations;
+    userState.emotionalProfile = recommendationResult.emotionalProfile;
+    userState.userProfile = {
+      emotionalProfile: recommendationResult.emotionalProfile,
+      answers: userState.choices
+    };
+    
     await env.USER_SESSIONS.put(
       `session:${sessionId}`,
       JSON.stringify(userState),
@@ -218,38 +245,57 @@ router.post('/api/movies/answer/:sessionId', asyncHandler(async (request, env) =
     
     const response = Response.json({
       type: 'recommendations',
-      recommendations,
+      recommendations: recommendationResult.recommendations,
+      moment: recommendationResult.moment,
+      validation: recommendationResult.validation,
       sessionId,
-      canRefine: true
+      canRefine: true,
+      quickAdjustments: [
+        { id: 'lighter', label: 'Lighter', icon: '☀️' },
+        { id: 'deeper', label: 'Deeper', icon: '🌊' },
+        { id: 'weirder', label: 'Weirder', icon: '🎭' },
+        { id: 'safer', label: 'Safer', icon: '🏠' }
+      ]
     });
     
     return wrapResponse(request, response, env);
   }
 }));
 
-// Generate movie recommendations
+// Generate enhanced movie recommendations with emotional mapping and surprises
 async function generateMovieRecommendations(userState, env) {
+  const emotionalMapping = new EmotionalMappingService(env);
   const vectorConverter = new PreferenceToVectorConverter(env);
   const vectorService = new VectorSearchService(env);
   const enrichmentService = new MovieEnrichmentService(env);
+  const surpriseEngine = new SurpriseEngine(env);
+  const validationService = new MomentValidationService(env);
   const analyticsService = new AnalyticsService(env);
   
   try {
-    // Convert answers to search vector
+    // Convert answers to emotional profile first
     const answers = {};
     userState.choices.forEach(choice => {
       answers[choice.questionId] = choice.choice;
     });
     
+    // Map moment to emotional vector
+    const emotionalMapping = new EmotionalMappingService(env);
+    const emotionalResult = await emotionalMapping.mapMomentToVector(answers, userState.context);
+    
+    // Convert to search vector with emotional weighting
     const searchVector = await vectorConverter.convertToSearchVector(
       answers, 
       userState.domain
     );
     
+    // Blend emotional and preference vectors
+    const blendedVector = blendVectors(searchVector, emotionalResult.vector);
+    
     // Store session embedding for analytics
     await analyticsService.storeSessionEmbedding(
       userState.sessionId,
-      searchVector,
+      blendedVector,
       answers,
       searchVector
     );
@@ -257,7 +303,7 @@ async function generateMovieRecommendations(userState, env) {
     // Track temporal preferences
     await analyticsService.trackTemporalPreferences(
       userState.sessionId,
-      searchVector,
+      blendedVector,
       {
         timezone: userState.context.timezone || 'UTC',
         device: userState.deviceType,
@@ -265,12 +311,15 @@ async function generateMovieRecommendations(userState, env) {
       }
     );
     
-    // Apply smart filters based on answers
-    const filters = buildSmartFilters(answers, userState.context);
+    // Apply smart filters with emotional adjustments
+    const filters = {
+      ...buildSmartFilters(answers, userState.context),
+      ...emotionalResult.filters
+    };
     
     // Search vector database
     const vectorResults = await vectorService.searchMovies(
-      searchVector, 
+      blendedVector, 
       filters, 
       20 // Get top 20 for refinement
     );
@@ -278,16 +327,40 @@ async function generateMovieRecommendations(userState, env) {
     // Enrich with TMDB data
     const enrichedMovies = await enrichmentService.enrichMovieResults(vectorResults);
     
-    // Select final recommendations (top 8-10)
-    const finalRecommendations = enrichedMovies.slice(0, 8);
+    // Inject surprises based on emotional profile
+    const userProfile = {
+      emotionalProfile: emotionalResult.emotionalProfile,
+      answers,
+      confidence: emotionalResult.confidence
+    };
+    
+    const recommendationsWithSurprises = await surpriseEngine.injectSurprise(
+      enrichedMovies.slice(0, 10),
+      userProfile,
+      userState.context
+    );
+    
+    // Validate moment capture
+    const validation = await validationService.validateMoment(
+      userState.sessionId,
+      recommendationsWithSurprises,
+      userProfile
+    );
+    
+    // Generate moment summary
+    const momentSummary = await validationService.generateMomentSummary(
+      userState.sessionId,
+      userProfile,
+      recommendationsWithSurprises
+    );
     
     // Track search for analytics
-    await trackVectorSearch(userState.sessionId, searchVector, finalRecommendations.length, env);
+    await trackVectorSearch(userState.sessionId, blendedVector, recommendationsWithSurprises.length, env);
     
     // Track recommendation results
     await analyticsService.trackRecommendationResults(
       userState.sessionId,
-      finalRecommendations
+      recommendationsWithSurprises
     );
     
     // Update session summary
@@ -300,7 +373,13 @@ async function generateMovieRecommendations(userState, env) {
       }
     }
     
-    return finalRecommendations;
+    // Return enhanced recommendations with metadata
+    return {
+      recommendations: recommendationsWithSurprises,
+      moment: momentSummary,
+      validation,
+      emotionalProfile: emotionalResult.emotionalProfile
+    };
     
   } catch (error) {
     console.error('Recommendation generation failed:', error);
@@ -312,6 +391,90 @@ async function generateMovieRecommendations(userState, env) {
     
     throw error;
   }
+}
+
+// Helper function to blend vectors
+function blendVectors(vector1, vector2, weight = 0.3) {
+  // If vector2 is an object with traits, convert to array
+  if (typeof vector2 === 'object' && !Array.isArray(vector2)) {
+    // This is a trait-based vector, apply as modifications
+    return vector1; // For now, return original vector
+  }
+  
+  // If both are arrays, blend them
+  if (Array.isArray(vector1) && Array.isArray(vector2)) {
+    return vector1.map((val, idx) => 
+      val * (1 - weight) + (vector2[idx] || 0) * weight
+    );
+  }
+  
+  return vector1;
+}
+
+// Apply quick adjustment to recommendations
+async function applyQuickAdjustment(userState, adjustment, env) {
+  const vectorConverter = new PreferenceToVectorConverter(env);
+  const vectorService = new VectorSearchService(env);
+  const enrichmentService = new MovieEnrichmentService(env);
+  const surpriseEngine = new SurpriseEngine(env);
+  
+  // Get original answers
+  const answers = {};
+  userState.choices.forEach(choice => {
+    answers[choice.questionId] = choice.choice;
+  });
+  
+  // Get original vector
+  const originalVector = await vectorConverter.convertToSearchVector(
+    answers,
+    userState.domain
+  );
+  
+  // Apply adjustment to vector
+  let adjustedVector = [...originalVector];
+  if (adjustment.vector) {
+    // Apply vector modifications
+    for (const [trait, modifier] of Object.entries(adjustment.vector)) {
+      // This is simplified - would need proper trait-to-dimension mapping
+      adjustedVector = adjustedVector.map((val, idx) => 
+        val + (modifier * 0.1) // Apply with dampening
+      );
+    }
+  }
+  
+  // Apply filters
+  const filters = {
+    ...buildSmartFilters(answers, userState.context),
+    ...adjustment.filters
+  };
+  
+  // Search with adjusted parameters
+  const vectorResults = await vectorService.searchMovies(
+    adjustedVector,
+    filters,
+    12
+  );
+  
+  // Enrich results
+  const enrichedMovies = await enrichmentService.enrichMovieResults(vectorResults);
+  
+  // Add some surprises based on adjustment type
+  const userProfile = {
+    emotionalProfile: userState.emotionalProfile || {},
+    answers,
+    adjustment: adjustment.description
+  };
+  
+  const finalRecommendations = await surpriseEngine.injectSurprise(
+    enrichedMovies.slice(0, 8),
+    userProfile,
+    userState.context
+  );
+  
+  return {
+    recommendations: finalRecommendations,
+    adjustmentApplied: adjustment.description
+  };
 }
 
 // Smart filtering based on question answers
@@ -459,10 +622,10 @@ function parseClaudeRecommendations(content) {
   }
 }
 
-// Refine recommendations based on user feedback
+// Refine recommendations with enhanced refinement engine
 router.post('/api/movies/refine/:sessionId', asyncHandler(async (request, env) => {
   const { sessionId } = request.params;
-  const { feedback, action } = await request.json();
+  const { feedback, action, quickAdjust } = await request.json();
   
   // Validate request
   const validation = validateRefineRequest({ feedback, action });
@@ -478,48 +641,75 @@ router.post('/api/movies/refine/:sessionId', asyncHandler(async (request, env) =
   
   const userState = Object.assign(new UserState(sessionId), JSON.parse(sessionData));
   
+  // Initialize refinement engine
+  const refinementEngine = new RefinementEngine(env);
+  refinementEngine.initSession(sessionId, userState.lastRecommendations || []);
+  
   // Store feedback for learning
   await storeFeedback(sessionId, feedback, env);
   
-  // Get original vector for comparison
-  const vectorConverter = new PreferenceToVectorConverter(env);
-  const originalAnswers = {};
-  userState.choices.forEach(choice => {
-    originalAnswers[choice.questionId] = choice.choice;
-  });
-  const originalVector = await vectorConverter.convertToSearchVector(
-    originalAnswers,
-    userState.domain
-  );
+  let refinedResults;
   
-  // Adjust search vector based on feedback
-  const adjustedVector = await adjustVectorFromFeedback(
-    userState, 
-    feedback, 
-    action, 
-    env
-  );
+  if (quickAdjust) {
+    // Handle quick adjustments (lighter, deeper, weirder, safer)
+    const adjustment = await refinementEngine.quickAdjust(quickAdjust);
+    
+    // Apply adjustment and get new recommendations
+    refinedResults = await applyQuickAdjustment(userState, adjustment, env);
+  } else {
+    // Use full refinement engine
+    const refinementResult = await refinementEngine.refineRecommendations(feedback, action);
+    
+    // Track embedding refinement
+    const analyticsService = new AnalyticsService(env);
+    const vectorConverter = new PreferenceToVectorConverter(env);
+    
+    const originalAnswers = {};
+    userState.choices.forEach(choice => {
+      originalAnswers[choice.questionId] = choice.choice;
+    });
+    
+    const originalVector = await vectorConverter.convertToSearchVector(
+      originalAnswers,
+      userState.domain
+    );
+    
+    await analyticsService.trackEmbeddingRefinement(
+      sessionId,
+      originalVector,
+      refinementResult.adjustments,
+      action
+    );
+    
+    refinedResults = refinementResult;
+  }
   
-  // Track embedding refinement
-  const analyticsService = new AnalyticsService(env);
-  await analyticsService.trackEmbeddingRefinement(
+  // Validate refinement with validation service
+  const validationService = new MomentValidationService(env);
+  const refinementValidation = await validationService.collectImmediateFeedback(
     sessionId,
-    originalVector,
-    adjustedVector,
-    action
+    'refinement_request',
+    { action, feedback }
   );
   
-  // Generate new recommendations
-  const vectorService = new VectorSearchService(env);
-  const enrichmentService = new MovieEnrichmentService(env);
+  // Update session with refinement history
+  userState.refinementHistory = userState.refinementHistory || [];
+  userState.refinementHistory.push({
+    timestamp: Date.now(),
+    action,
+    feedback: feedback.length
+  });
   
-  const newResults = await vectorService.searchMovies(adjustedVector, {}, 10);
-  const refinedRecommendations = await enrichmentService.enrichMovieResults(newResults);
+  await env.USER_SESSIONS.put(
+    `session:${sessionId}`,
+    JSON.stringify(userState),
+    { expirationTtl: env.SESSION_TIMEOUT_SECONDS || 3600 }
+  );
   
   const response = Response.json({
     type: 'refined_recommendations',
-    recommendations: refinedRecommendations,
-    refinementType: action
+    ...refinedResults,
+    validation: refinementValidation
   });
   
   return wrapResponse(request, response, env);
@@ -597,6 +787,86 @@ router.post('/api/movies/interaction/:sessionId', asyncHandler(async (request, e
     success: true,
     message: `Interaction ${interactionType} tracked for movie ${movieId}`
   });
+  return wrapResponse(request, response, env);
+}));
+
+// Validate moment capture - get feedback on recommendations
+router.post('/api/movies/validate/:sessionId', asyncHandler(async (request, env) => {
+  const { sessionId } = request.params;
+  const { feedbackType, response: userResponse } = await request.json();
+  
+  // Validate session
+  if (!isValidUUID(sessionId)) {
+    throw new ValidationError('Invalid session ID format');
+  }
+  
+  const validationService = new MomentValidationService(env);
+  const feedback = await validationService.collectImmediateFeedback(
+    sessionId,
+    feedbackType,
+    userResponse
+  );
+  
+  const response = Response.json({
+    success: true,
+    feedback,
+    message: feedback.message
+  });
+  
+  return wrapResponse(request, response, env);
+}));
+
+// Get moment summary - visualization of captured moment
+router.get('/api/movies/moment/:sessionId', asyncHandler(async (request, env) => {
+  const { sessionId } = request.params;
+  
+  // Get session data
+  const sessionData = await env.USER_SESSIONS.get(`session:${sessionId}`);
+  if (!sessionData) {
+    throw new SessionExpiredError('Session not found or expired');
+  }
+  
+  const userState = JSON.parse(sessionData);
+  const validationService = new MomentValidationService(env);
+  
+  // Generate moment summary
+  const momentSummary = await validationService.generateMomentSummary(
+    sessionId,
+    userState.userProfile || {},
+    userState.lastRecommendations || []
+  );
+  
+  const response = Response.json(momentSummary);
+  return wrapResponse(request, response, env);
+}));
+
+// Quick mood adjustment endpoint
+router.post('/api/movies/adjust/:sessionId', asyncHandler(async (request, env) => {
+  const { sessionId } = request.params;
+  const { adjustmentType } = await request.json();
+  // adjustmentType: 'lighter', 'deeper', 'weirder', 'safer', 'shorter', 'longer'
+  
+  // Validate session
+  const sessionData = await env.USER_SESSIONS.get(`session:${sessionId}`);
+  if (!sessionData) {
+    throw new SessionExpiredError('Session not found or expired');
+  }
+  
+  const userState = Object.assign(new UserState(sessionId), JSON.parse(sessionData));
+  
+  // Use refinement engine for quick adjustment
+  const refinementEngine = new RefinementEngine(env);
+  const adjustment = await refinementEngine.quickAdjust(adjustmentType);
+  
+  // Apply adjustment and get new recommendations
+  const adjustedResults = await applyQuickAdjustment(userState, adjustment, env);
+  
+  const response = Response.json({
+    type: 'adjusted_recommendations',
+    adjustment: adjustmentType,
+    ...adjustedResults
+  });
+  
   return wrapResponse(request, response, env);
 }));
 
