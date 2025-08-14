@@ -13,7 +13,8 @@
       "Bash(npm run deploy:production:*)",
       "Bash(wrangler d1 migrations list:*)",
       "Bash(npm run deploy:*)",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "Bash(npx wrangler d1 create:*)"
     ],
     "deny": [],
     "ask": [],

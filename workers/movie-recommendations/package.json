@@ -1,0 +1,43 @@
+{
+  "name": "movie-recommendations-worker",
+  "version": "1.0.0",
+  "description": "Vector-first movie recommendation worker for What Next",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler publish",
+    "deploy:staging": "wrangler publish --env staging",
+    "deploy:production": "wrangler publish --env production",
+    "build": "node scripts/build.js",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "db:migrate": "wrangler d1 migrations apply movie-recommendations-db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply movie-recommendations-db --remote",
+    "db:seed": "node scripts/seed-database.js",
+    "kv:seed": "node scripts/seed-kv.js",
+    "test": "node scripts/test-api-flow.js",
+    "test:vector": "node scripts/test-vector-search.js",
+    "test:enrich": "node scripts/test-tmdb-enrichment.js"
+  },
+  "dependencies": {
+    "itty-router": "^4.0.25"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240806.0",
+    "eslint": "^8.56.0",
+    "wrangler": "^4.30.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "cloudflare-workers",
+    "movie-recommendations",
+    "vector-search",
+    "tmdb",
+    "recommendations-engine"
+  ],
+  "author": "",
+  "license": "MIT"
+}

@@ -1,0 +1,120 @@
+# wrangler.toml - Movie Recommendations Worker Configuration
+
+name = "movie-recommendations-worker"
+main = "src/index.js"
+compatibility_date = "2024-08-12"
+compatibility_flags = ["nodejs_compat"]
+
+[env.production]
+name = "movie-recommendations-prod"
+
+# Production D1 Database
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "movie-recommendations-db"
+database_id = "a456b5dc-1c83-4373-b611-da83830fef68"
+
+# Production KV Namespaces
+[[env.production.kv_namespaces]]
+binding = "MOVIE_QUESTIONS"
+id = "6089d3c9342d4a15830dc5cd4dd73323"
+
+[[env.production.kv_namespaces]]
+binding = "USER_SESSIONS"
+id = "c7e6e8fd74b740d3969f5c8584c47482"
+
+[[env.production.kv_namespaces]]
+binding = "MOVIE_CACHE"
+id = "4a7d878803284d71901923a4194412f1"
+
+[[env.production.kv_namespaces]]
+binding = "VECTOR_CACHE"
+id = "da01e2fdc26a40e480160bf1ac6bfac6"
+
+[[env.production.kv_namespaces]]
+binding = "PREFERENCE_VECTORS"
+id = "53a93865233e44a1ad1b5983a5de3e28"
+
+# Production Vectorize Binding
+[[env.production.vectorize]]
+binding = "MOVIE_VECTORS"
+index_name = "whatnext-movies"
+
+# Production Environment Variables
+[env.production.vars]
+VECTORIZE_WORKER_URL = "https://whatnext-vectorize.jhaladik.workers.dev"
+CLAUDE_API_ENDPOINT = "https://api.anthropic.com/v1/messages"
+CLAUDE_MODEL = "claude-3-5-sonnet-20241022"
+MAX_QUESTIONS_PER_SESSION = 5
+SESSION_TIMEOUT_SECONDS = 3600
+RATE_LIMIT_PER_MINUTE = 60
+LOG_LEVEL = "info"
+ENABLE_CLAUDE_FALLBACK = true
+ENABLE_ANALYTICS = true
+DEFAULT_DOMAIN = "movies"
+FRONTEND_URL = "https://whatnext.pages.dev"
+OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"
+
+[env.staging]
+name = "movie-recommendations-staging"
+
+[env.development]
+name = "movie-recommendations-dev"
+
+# D1 Database Configuration
+[[d1_databases]]
+binding = "DB"
+database_name = "movie-recommendations-db"
+database_id = "a456b5dc-1c83-4373-b611-da83830fef68"
+preview_database_id = "a456b5dc-1c83-4373-b611-da83830fef68"
+
+# KV Storage for Questions and Caching
+[[kv_namespaces]]
+binding = "MOVIE_QUESTIONS"
+id = "6089d3c9342d4a15830dc5cd4dd73323"
+
+[[kv_namespaces]]
+binding = "USER_SESSIONS"
+id = "c7e6e8fd74b740d3969f5c8584c47482"
+
+[[kv_namespaces]]
+binding = "MOVIE_CACHE"
+id = "4a7d878803284d71901923a4194412f1"
+
+[[kv_namespaces]]
+binding = "VECTOR_CACHE"
+id = "da01e2fdc26a40e480160bf1ac6bfac6"
+
+[[kv_namespaces]]
+binding = "PREFERENCE_VECTORS"
+id = "53a93865233e44a1ad1b5983a5de3e28"
+
+# Environment Variables
+[vars]
+VECTORIZE_WORKER_URL = "http://localhost:8787"
+CLAUDE_API_ENDPOINT = "https://api.anthropic.com/v1/messages"
+CLAUDE_MODEL = "claude-3-5-sonnet-20241022"
+MAX_QUESTIONS_PER_SESSION = 5
+SESSION_TIMEOUT_SECONDS = 3600
+LOG_LEVEL = "debug"
+ENABLE_CLAUDE_FALLBACK = true
+ENABLE_ANALYTICS = true
+DEFAULT_DOMAIN = "movies"
+OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"
+
+# Secrets (use `wrangler secret put` to set these)
+# OPENAI_API_KEY = "your-openai-api-key"
+# TMDB_API_KEY = "your-tmdb-api-key"
+# CLAUDE_API_KEY = "your-claude-api-key"
+
+# Resource limits
+[limits]
+cpu_ms = 50
+
+# Analytics and monitoring
+[observability]
+enabled = true
+
+# Build configuration
+# [build]
+# command = "npm run build"

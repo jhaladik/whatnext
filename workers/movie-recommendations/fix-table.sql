@@ -1,0 +1,21 @@
+CREATE TABLE IF NOT EXISTS recommendation_results (
+  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  session_id TEXT NOT NULL,
+  movie_id TEXT NOT NULL,
+  rank_position INTEGER NOT NULL,
+  similarity_score REAL NOT NULL,
+  was_displayed BOOLEAN DEFAULT TRUE,
+  was_clicked BOOLEAN DEFAULT FALSE,
+  was_liked BOOLEAN DEFAULT FALSE,
+  was_disliked BOOLEAN DEFAULT FALSE,
+  was_saved BOOLEAN DEFAULT FALSE,
+  watch_initiated BOOLEAN DEFAULT FALSE,
+  watch_completed BOOLEAN DEFAULT FALSE,
+  time_to_interaction INTEGER,
+  interaction_type TEXT,
+  final_outcome TEXT,
+  feedback_score REAL,
+  created_at INTEGER DEFAULT (unixepoch()),
+  updated_at INTEGER DEFAULT (unixepoch()),
+  UNIQUE(session_id, movie_id)
+);
