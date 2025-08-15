@@ -164,7 +164,7 @@ export class RefinementEngine {
   /**
    * Initialize refinement session
    */
-  initSession(sessionId, initialRecommendations) {
+  initSession(sessionId, initialRecommendations, userState = null) {
     this.session = {
       id: sessionId,
       initialRecommendations,
@@ -172,7 +172,8 @@ export class RefinementEngine {
       interactions: [],
       refinementCount: 0,
       vectorHistory: [],
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      userState: userState
     };
   }
 
@@ -426,14 +427,92 @@ export class RefinementEngine {
    * Apply refinement to get new recommendations
    */
   async applyRefinement(vectorAdjustment, strategy) {
-    // This would integrate with your vector search service
-    // For now, returning a placeholder
-    return {
-      applied: true,
-      vectorAdjustment,
-      strategy: strategy.action,
-      newRecommendations: []
-    };
+    try {
+      // Import required services dynamically
+      const { VectorSearchService } = await import('./vectorSearchService.js');
+      const { MovieEnrichmentService } = await import('./movieEnrichmentService.js');
+      const { PreferenceToVectorConverter } = await import('./preferenceToVectorConverter.js');
+      
+      const vectorService = new VectorSearchService(this.env);
+      const enrichmentService = new MovieEnrichmentService(this.env);
+      const vectorConverter = new PreferenceToVectorConverter(this.env);
+      
+      // Get user answers from session
+      if (!this.session || !this.session.userState) {
+        console.error('No user state available for refinement');
+        return [];
+      }
+      
+      // Build answers map from choices
+      const answers = {};
+      this.session.userState.choices.forEach(choice => {
+        answers[choice.questionId] = choice.choice;
+      });
+      
+      // Generate base preference text from original answers
+      let refinedPreferenceText = await vectorConverter.getPreferenceText(
+        answers,
+        this.session.userState.domain || 'movies'
+      );
+      
+      // Add strategy-specific refinements to the preference text
+      if (strategy.action) {
+        refinedPreferenceText += `. ${strategy.action}`;
+      }
+      
+      // Apply vector adjustments to preference text
+      const adjustmentDescriptions = [];
+      for (const [trait, value] of Object.entries(vectorAdjustment)) {
+        if (typeof value === 'number') {
+          if (value > 0) {
+            adjustmentDescriptions.push(`more ${trait.replace(/_/g, ' ')}`);
+          } else if (value < 0) {
+            adjustmentDescriptions.push(`less ${trait.replace(/_/g, ' ')}`);
+          }
+        }
+      }
+      
+      if (adjustmentDescriptions.length > 0) {
+        refinedPreferenceText += `. Looking for something ${adjustmentDescriptions.join(', ')}`;
+      }
+      
+      // Build filters based on strategy
+      const filters = {};
+      if (strategy.filterAdjustment) {
+        if (strategy.filterAdjustment.excludeGenres) {
+          filters.excludeGenres = strategy.filterAdjustment.excludeGenres;
+        }
+        if (strategy.filterAdjustment.includeGenres) {
+          filters.includeGenres = strategy.filterAdjustment.includeGenres;
+        }
+        if (strategy.filterAdjustment.maxRating) {
+          filters.maxRating = strategy.filterAdjustment.maxRating;
+        }
+        if (strategy.filterAdjustment.minRating) {
+          filters.minRating = strategy.filterAdjustment.minRating;
+        }
+        if (strategy.filterAdjustment.diversifyGenres) {
+          filters.diversifyResults = true;
+        }
+      }
+      
+      // Perform vector search with refined preferences
+      const vectorResults = await vectorService.searchMovies(
+        refinedPreferenceText,
+        filters,
+        12
+      );
+      
+      // Enrich the results
+      const enrichedMovies = await enrichmentService.enrichMovieResults(vectorResults);
+      
+      return enrichedMovies.slice(0, 10);
+      
+    } catch (error) {
+      console.error('Failed to apply refinement:', error);
+      // Fallback to empty array if refinement fails
+      return [];
+    }
   }
 
   /**

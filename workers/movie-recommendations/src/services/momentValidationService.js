@@ -772,15 +772,27 @@ export class MomentValidationService {
    * Determine refinement strategy from feedback
    */
   determineRefinementStrategy(response) {
-    if (response.includes('different')) {
-      return 'variety';
-    } else if (response.includes('lighter')) {
-      return 'lighter';
-    } else if (response.includes('deeper')) {
-      return 'deeper';
-    } else {
+    // Handle object response (from refinement request)
+    if (typeof response === 'object' && response !== null) {
+      if (response.action) {
+        return response.action;
+      }
+      // Default strategy for object without action
       return 'adjust';
     }
+    
+    // Handle string response (from user feedback)
+    if (typeof response === 'string') {
+      if (response.includes('different')) {
+        return 'variety';
+      } else if (response.includes('lighter')) {
+        return 'lighter';
+      } else if (response.includes('deeper')) {
+        return 'deeper';
+      }
+    }
+    
+    return 'adjust';
   }
 
   /**

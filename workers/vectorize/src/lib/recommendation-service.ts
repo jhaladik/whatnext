@@ -272,7 +272,7 @@ export class RecommendationService {
     }));
   }
 
-  async searchMovies(query: string, limit: number = 10): Promise<any[]> {
+  async searchMovies(query: string, limit: number = 10): Promise<{ movies: any[], embedding: number[] }> {
     try {
       // Generate embedding for search query
       const queryVector = await this.embedding.generateSingleEmbedding(query);
@@ -280,15 +280,27 @@ export class RecommendationService {
       // Search in vector database
       const results = await this.vectorize.queryVectors(queryVector, limit);
       
-      return results.matches.map(match => ({
+      const movies = results.matches.map(match => ({
         tmdb_id: match.metadata.tmdb_id,
         title: match.metadata.title,
         year: match.metadata.year,
         genres: match.metadata.genres,
         rating: match.metadata.rating,
         similarity: match.score,
-        overview: match.metadata.overview_snippet
+        overview: match.metadata.overview_snippet,
+        runtime: match.metadata.runtime,
+        vote_count: match.metadata.vote_count,
+        popularity: match.metadata.popularity,
+        poster_path: match.metadata.poster_path,
+        backdrop_path: match.metadata.backdrop_path,
+        release_date: match.metadata.release_date
       }));
+
+      // Return both movies and the embedding used for search
+      return {
+        movies,
+        embedding: queryVector
+      };
 
     } catch (error) {
       console.error('[Recommendations] Search failed:', error);

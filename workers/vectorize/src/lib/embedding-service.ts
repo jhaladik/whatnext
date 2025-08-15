@@ -97,6 +97,10 @@ export class EmbeddingService {
             runtime: movie.runtime,
             language: movie.original_language,
             popularity: movie.popularity,
+            vote_count: movie.vote_count,
+            poster_path: movie.poster_path,
+            backdrop_path: movie.backdrop_path,
+            release_date: movie.release_date,
             keywords: movie.keywords.slice(0, 10).map(k => k.name),
             overview_snippet: movie.overview.slice(0, 200)
           }

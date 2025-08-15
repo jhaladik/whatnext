@@ -8,6 +8,16 @@ export class PreferenceToVectorConverter {
   }
 
   /**
+   * Get preference text without converting to vector
+   * @param {Object} questionAnswers - Map of questionId to answer
+   * @param {string} domain - Content domain
+   * @returns {string} Preference text description
+   */
+  async getPreferenceText(questionAnswers, domain = 'movies') {
+    return this.buildPreferenceText(questionAnswers, domain);
+  }
+
+  /**
    * Convert question answers to a search vector
    * @param {Object} questionAnswers - Map of questionId to answer
    * @param {string} domain - Content domain (movies, tv-series, etc.)

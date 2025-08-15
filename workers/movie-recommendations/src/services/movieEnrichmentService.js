@@ -18,19 +18,23 @@ export class MovieEnrichmentService {
       return [];
     }
 
-    const enrichedResults = [];
-    
-    // Process movies in parallel but with rate limiting
-    const batchSize = 5;
-    for (let i = 0; i < movieResults.length; i += batchSize) {
-      const batch = movieResults.slice(i, i + batchSize);
-      const enrichedBatch = await Promise.all(
-        batch.map(movie => this.enrichSingleMovie(movie))
-      );
-      enrichedResults.push(...enrichedBatch);
-    }
-    
-    return enrichedResults.filter(movie => movie !== null);
+    // Since vectorize worker now returns enriched data,
+    // just format it properly for the frontend
+    return movieResults.map(movie => ({
+      movieId: movie.movieId || movie.tmdb_id,
+      title: movie.title || 'Unknown Title',
+      year: movie.year || new Date().getFullYear(),
+      genres: movie.genres || [],
+      rating: movie.rating || 0,
+      overview: movie.overview || '',
+      similarity: movie.similarity || 0.5,
+      runtime: movie.runtime,
+      voteCount: movie.vote_count || movie.voteCount,
+      popularity: movie.popularity,
+      poster: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : null,
+      backdrop: movie.backdrop_path ? `https://image.tmdb.org/t/p/w1280${movie.backdrop_path}` : null,
+      releaseDate: movie.release_date || movie.releaseDate
+    }));
   }
 
   /**

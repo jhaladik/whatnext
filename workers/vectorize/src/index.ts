@@ -286,10 +286,13 @@ async function handleSearch(request: Request, env: Env): Promise<Response> {
     env.DB
   );
 
-  const results = await recommendationService.searchMovies(query, limit);
+  const searchResult = await recommendationService.searchMovies(query, limit);
   
   return new Response(
-    JSON.stringify({ results }),
+    JSON.stringify({ 
+      results: searchResult.movies,
+      query_embedding: searchResult.embedding 
+    }),
     { headers: { 'Content-Type': 'application/json' } }
   );
 }

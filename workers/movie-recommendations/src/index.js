@@ -283,32 +283,10 @@ async function generateMovieRecommendations(userState, env) {
     const emotionalMapping = new EmotionalMappingService(env);
     const emotionalResult = await emotionalMapping.mapMomentToVector(answers, userState.context);
     
-    // Convert to search vector with emotional weighting
-    const searchVector = await vectorConverter.convertToSearchVector(
+    // Get preference text instead of vector
+    const preferenceText = await vectorConverter.getPreferenceText(
       answers, 
       userState.domain
-    );
-    
-    // Blend emotional and preference vectors
-    const blendedVector = blendVectors(searchVector, emotionalResult.vector);
-    
-    // Store session embedding for analytics
-    await analyticsService.storeSessionEmbedding(
-      userState.sessionId,
-      blendedVector,
-      answers,
-      searchVector
-    );
-    
-    // Track temporal preferences
-    await analyticsService.trackTemporalPreferences(
-      userState.sessionId,
-      blendedVector,
-      {
-        timezone: userState.context.timezone || 'UTC',
-        device: userState.deviceType,
-        userAgent: userState.userAgent
-      }
     );
     
     // Apply smart filters with emotional adjustments
@@ -317,12 +295,36 @@ async function generateMovieRecommendations(userState, env) {
       ...emotionalResult.filters
     };
     
-    // Search vector database
+    // Search using preference text
     const vectorResults = await vectorService.searchMovies(
-      blendedVector, 
+      preferenceText, 
       filters, 
       20 // Get top 20 for refinement
     );
+    
+    // Get embedding from vector service (if available)
+    const searchEmbedding = vectorService.getLastQueryEmbedding();
+    
+    // Store session embedding for analytics if available
+    if (searchEmbedding) {
+      await analyticsService.storeSessionEmbedding(
+        userState.sessionId,
+        searchEmbedding,
+        answers,
+        searchEmbedding
+      );
+      
+      // Track temporal preferences
+      await analyticsService.trackTemporalPreferences(
+        userState.sessionId,
+        searchEmbedding,
+        {
+          timezone: userState.context.timezone || 'UTC',
+          device: userState.deviceType,
+          userAgent: userState.userAgent
+        }
+      );
+    }
     
     // Enrich with TMDB data
     const enrichedMovies = await enrichmentService.enrichMovieResults(vectorResults);
@@ -354,8 +356,10 @@ async function generateMovieRecommendations(userState, env) {
       recommendationsWithSurprises
     );
     
-    // Track search for analytics
-    await trackVectorSearch(userState.sessionId, blendedVector, recommendationsWithSurprises.length, env);
+    // Track search for analytics (use embedding if available)
+    if (searchEmbedding) {
+      await trackVectorSearch(userState.sessionId, searchEmbedding, recommendationsWithSurprises.length, env);
+    }
     
     // Track recommendation results
     await analyticsService.trackRecommendationResults(
@@ -424,22 +428,16 @@ async function applyQuickAdjustment(userState, adjustment, env) {
     answers[choice.questionId] = choice.choice;
   });
   
-  // Get original vector
-  const originalVector = await vectorConverter.convertToSearchVector(
+  // Build adjusted preference text based on adjustment type
+  let adjustedPreferenceText = await vectorConverter.getPreferenceText(
     answers,
     userState.domain
   );
   
-  // Apply adjustment to vector
-  let adjustedVector = [...originalVector];
-  if (adjustment.vector) {
-    // Apply vector modifications
-    for (const [trait, modifier] of Object.entries(adjustment.vector)) {
-      // This is simplified - would need proper trait-to-dimension mapping
-      adjustedVector = adjustedVector.map((val, idx) => 
-        val + (modifier * 0.1) // Apply with dampening
-      );
-    }
+  // Modify the preference text based on adjustment
+  if (adjustment.description) {
+    // Add adjustment context to the preference text
+    adjustedPreferenceText += `, but ${adjustment.description.toLowerCase()}`;
   }
   
   // Apply filters
@@ -448,9 +446,9 @@ async function applyQuickAdjustment(userState, adjustment, env) {
     ...adjustment.filters
   };
   
-  // Search with adjusted parameters
+  // Search with adjusted preference text
   const vectorResults = await vectorService.searchMovies(
-    adjustedVector,
+    adjustedPreferenceText,
     filters,
     12
   );
@@ -643,7 +641,7 @@ router.post('/api/movies/refine/:sessionId', asyncHandler(async (request, env) =
   
   // Initialize refinement engine
   const refinementEngine = new RefinementEngine(env);
-  refinementEngine.initSession(sessionId, userState.lastRecommendations || []);
+  refinementEngine.initSession(sessionId, userState.lastRecommendations || [], userState);
   
   // Store feedback for learning
   await storeFeedback(sessionId, feedback, env);

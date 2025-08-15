@@ -2,45 +2,113 @@
 export class VectorSearchService {
   constructor(env) {
     this.vectorIndex = env.MOVIE_VECTORS; // Direct Vectorize binding
-    this.vectorizeWorkerUrl = env.VECTORIZE_WORKER_URL; // Also keep worker URL for search endpoint
+    this.vectorizeService = env.VECTORIZE_SERVICE; // Service binding to vectorize worker
+    this.vectorizeWorkerUrl = env.VECTORIZE_WORKER_URL; // Fallback URL for non-service-binding envs
     this.fallbackEnabled = env.ENABLE_CLAUDE_FALLBACK || false;
     this.cacheKV = env.VECTOR_CACHE;
     this.db = env.DB;
   }
 
   /**
-   * Search for movies using vector similarity
-   * @param {Array<number>} preferenceVector - 1536-dimensional preference vector
+   * Get the last query embedding (if available)
+   * @returns {Array<number>|null} The embedding from the last search
+   */
+  getLastQueryEmbedding() {
+    return this.lastQueryEmbedding || null;
+  }
+
+  /**
+   * Search for movies using text query
+   * @param {string|Array<number>} queryOrVector - Text query or vector (for backwards compatibility)
    * @param {Object} filters - Search filters
    * @param {number} limit - Maximum number of results
    * @returns {Array} Movie search results
    */
-  async searchMovies(preferenceVector, filters = {}, limit = 50) {
+  async searchMovies(queryOrVector, filters = {}, limit = 50) {
     try {
+      // Determine if we have a text query or vector
+      const isTextQuery = typeof queryOrVector === 'string';
+      
       // Check cache first
-      const cacheKey = this.generateCacheKey(preferenceVector, filters);
+      const cacheKey = this.generateCacheKey(queryOrVector, filters);
       const cachedResults = await this.getCachedResults(cacheKey);
       
       if (cachedResults) {
-        console.log('Returning cached vector search results');
+        console.log('Returning cached search results');
         return cachedResults;
       }
 
-      // Try native Vectorize binding first
       let processedResults;
       
-      if (this.vectorIndex) {
-        console.log('Using native Vectorize binding for search');
+      // Use service binding if available, otherwise fall back to URL
+      if (isTextQuery && (this.vectorizeService || this.vectorizeWorkerUrl)) {
+        console.log('Using vectorize worker for text search:', queryOrVector.substring(0, 100));
         
-        const vectorResults = await this.vectorIndex.query(preferenceVector, {
+        let response;
+        if (this.vectorizeService) {
+          // Use service binding for direct worker-to-worker communication
+          const request = new Request('https://vectorize.internal/search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              query: queryOrVector,
+              limit: limit
+            })
+          });
+          response = await this.vectorizeService.fetch(request);
+        } else {
+          // Fallback to HTTP URL
+          response = await fetch(`${this.vectorizeWorkerUrl}/search`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              query: queryOrVector,
+              limit: limit
+            })
+          });
+        }
+
+        if (!response.ok) {
+          throw new Error(`Vectorize worker search failed: ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        // Map the results to expected format (tmdb_id -> movieId)
+        processedResults = (data.results || []).map(movie => ({
+          movieId: movie.tmdb_id,
+          title: movie.title,
+          year: movie.year,
+          genres: movie.genres,
+          rating: movie.rating,
+          similarity: movie.similarity,
+          overview: movie.overview,
+          runtime: movie.runtime,
+          vote_count: movie.vote_count,
+          popularity: movie.popularity,
+          poster_path: movie.poster_path,
+          backdrop_path: movie.backdrop_path,
+          release_date: movie.release_date
+        }));
+        
+        // Store the embedding separately to preserve array structure
+        if (data.query_embedding) {
+          this.lastQueryEmbedding = data.query_embedding;
+        }
+        
+      } else if (this.vectorIndex && !isTextQuery) {
+        // Use native Vectorize binding for vector search (legacy)
+        console.log('Using native Vectorize binding for vector search');
+        
+        const vectorResults = await this.vectorIndex.query(queryOrVector, {
           topK: limit,
           returnMetadata: true
         });
 
         processedResults = this.processVectorResults(vectorResults);
       } else {
-        // Fallback to database search if no vector index
-        console.log('No Vectorize binding, falling back to database search');
+        // Fallback to database search
+        console.log('Falling back to database search');
         processedResults = await this.fallbackToDatabase(filters, limit);
       }
       
@@ -151,6 +219,80 @@ export class VectorSearchService {
   }
 
   /**
+   * Fallback to database when no vector index is available
+   */
+  async fallbackToDatabase(filters, limit = 20) {
+    try {
+      console.log('Fallback to database search with filters:', filters);
+      
+      // For now, return some mock data or query from movie_cache table
+      // This is a temporary solution until Vectorize is properly configured
+      let query = `
+        SELECT 
+          id as movieId,
+          title,
+          release_year as year,
+          genres,
+          rating,
+          poster_url as poster,
+          overview,
+          runtime,
+          vote_count as voteCount
+        FROM movie_cache
+        WHERE 1=1
+      `;
+      
+      const bindings = [];
+      
+      // Apply basic filters
+      if (filters.minRating) {
+        query += ` AND rating >= ?`;
+        bindings.push(filters.minRating);
+      }
+      
+      if (filters.minYear) {
+        query += ` AND release_year >= ?`;
+        bindings.push(filters.minYear);
+      }
+      
+      if (filters.maxYear) {
+        query += ` AND release_year <= ?`;
+        bindings.push(filters.maxYear);
+      }
+      
+      // Order by rating and popularity
+      query += ` ORDER BY rating DESC, vote_count DESC LIMIT ?`;
+      bindings.push(limit);
+      
+      const result = await this.db.prepare(query).bind(...bindings).all();
+      
+      if (!result.results || result.results.length === 0) {
+        console.log('No movies found in database, returning empty array');
+        return [];
+      }
+      
+      // Transform results to match expected format
+      return result.results.map(movie => ({
+        movieId: movie.movieId,
+        title: movie.title,
+        similarity: 0.75, // Default similarity score
+        year: movie.year,
+        genres: movie.genres ? JSON.parse(movie.genres) : [],
+        rating: movie.rating || 0,
+        poster: movie.poster,
+        overview: movie.overview || '',
+        runtime: movie.runtime,
+        voteCount: movie.voteCount || 0,
+        confidence: 60 // Default confidence
+      }));
+      
+    } catch (error) {
+      console.error('Database fallback error:', error);
+      return [];
+    }
+  }
+
+  /**
    * Fallback to database search when vector search fails
    */
   async fallbackToDatabaseSearch(filters) {
@@ -214,11 +356,23 @@ export class VectorSearchService {
   /**
    * Generate cache key for vector search
    */
-  generateCacheKey(vector, filters) {
-    // Use first 10 dimensions of vector + filter hash for cache key
-    const vectorPrefix = vector.slice(0, 10).map(v => v.toFixed(3)).join(',');
+  generateCacheKey(queryOrVector, filters) {
+    // Handle both text queries and vectors
+    let keyPrefix;
+    if (typeof queryOrVector === 'string') {
+      // For text queries, use a hash of the text
+      keyPrefix = `text:${this.hashObject(queryOrVector)}`;
+    } else if (Array.isArray(queryOrVector)) {
+      // For vectors, use first 10 dimensions
+      const vectorPrefix = queryOrVector.slice(0, 10).map(v => v.toFixed(3)).join(',');
+      keyPrefix = `vector:${vectorPrefix}`;
+    } else {
+      // Fallback
+      keyPrefix = 'unknown';
+    }
+    
     const filterHash = this.hashObject(filters);
-    return `vector_search:${vectorPrefix}:${filterHash}`;
+    return `search:${keyPrefix}:${filterHash}`;
   }
 
   /**

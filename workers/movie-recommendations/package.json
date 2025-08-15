@@ -6,9 +6,9 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler publish",
-    "deploy:staging": "wrangler publish --env staging",
-    "deploy:production": "wrangler publish --env production",
+    "deploy": "wrangler deploy",
+    "deploy:staging": "wrangler deploy --env staging",
+    "deploy:production": "wrangler deploy --env production",
     "build": "node scripts/build.js",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",

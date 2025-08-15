@@ -40,6 +40,11 @@ id = "53a93865233e44a1ad1b5983a5de3e28"
 binding = "MOVIE_VECTORS"
 index_name = "whatnext-movies"
 
+# Service Binding to Vectorize Worker
+[[env.production.services]]
+binding = "VECTORIZE_SERVICE"
+service = "whatnext-vectorize"
+
 # Production Environment Variables
 [env.production.vars]
 VECTORIZE_WORKER_URL = "https://whatnext-vectorize.jhaladik.workers.dev"
