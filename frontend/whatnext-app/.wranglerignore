@@ -1,0 +1,9 @@
+# Ignore cache and unnecessary files
+cache/
+*.pack
+node_modules/
+.git/
+.next/cache/
+.next/diagnostics/
+*.log
+.env*
