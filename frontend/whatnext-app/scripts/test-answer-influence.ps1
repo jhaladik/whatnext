@@ -2,8 +2,8 @@
 # Tests that user answers properly influence the recommendation results
 
 # Configuration
-$API_URL = "http://localhost:8788"  # Local dev with wrangler
-# $API_URL = "https://whatnext-frontend.pages.dev"  # Production
+# $API_URL = "http://localhost:8788"  # Local dev with wrangler
+$API_URL = "https://whatnext-frontend.pages.dev"  # Production
 
 Write-Host "`n========================================" -ForegroundColor Cyan
 Write-Host "ANSWER INFLUENCE VERIFICATION TEST" -ForegroundColor Cyan
@@ -84,13 +84,25 @@ function Test-AnswerCombination {
     }
     
     $recommendations = $null
+    $questionNum = 1
     foreach ($answer in $answerList) {
+        Write-Host "  Submitting answer $questionNum/5..." -ForegroundColor DarkGray
         $response = Invoke-API -Method POST -Endpoint "/api/movies/answer/$sessionId" -Body $answer
         
-        if ($response.type -eq "recommendations") {
-            $recommendations = $response
-            break
+        if ($response) {
+            if ($response.type -eq "recommendations") {
+                $recommendations = $response
+                Write-Host "  [OK] Recommendations received after question $questionNum" -ForegroundColor Green
+                break
+            } elseif ($response.question) {
+                Write-Host "  Got next question: $($response.question.id)" -ForegroundColor DarkGray
+            } else {
+                Write-Host "  Response type: $($response.type)" -ForegroundColor DarkGray
+            }
+        } else {
+            Write-Host "  [WARNING] No response for answer $questionNum" -ForegroundColor Yellow
         }
+        $questionNum++
     }
     
     if (-not $recommendations) {
@@ -159,7 +171,7 @@ Test-AnswerCombination -TestName "Easy & Uplifting Movies" -Answers @{
     emotional_tone = "uplifting"
     personal_context = "escaping"
     attention_level = "moderate"
-    discovery_mode = "reliable"
+    discovery_mode = "familiar"
 } -ExpectedTraits @(
     "Feel-good movies",
     "Light entertainment",
@@ -195,11 +207,11 @@ Write-Host "TEST CASE 3: CONTEMPLATIVE & ARTISTIC" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 
 Test-AnswerCombination -TestName "Contemplative & Artistic Movies" -Answers @{
-    cognitive_load = "moderate"
+    cognitive_load = "easy"  # Only "challenge" or "easy" are valid
     emotional_tone = "contemplative"
     personal_context = "exploring"
     attention_level = "moderate"
-    discovery_mode = "surprise"
+    discovery_mode = "surprise"  # Use "surprise" for more artistic/experimental films
 } -ExpectedTraits @(
     "Thoughtful films",
     "Artistic approach",
