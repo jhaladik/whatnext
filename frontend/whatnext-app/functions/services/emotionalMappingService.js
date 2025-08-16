@@ -216,46 +216,49 @@ export class EmotionalMappingService {
       focus: 'present'
     };
 
-    // Map cognitive load to energy
-    if (answers.cognitive_load === 'challenge') {
-      profile.energy = 'energized';
-      profile.focus = 'immersed';
-    } else if (answers.cognitive_load === 'easy') {
-      profile.energy = 'neutral';
-      profile.focus = 'present';
-    }
+    // Map cognitive load to FOCUS (not energy) - respects user's mental state
+    const focusMapping = {
+      challenge: 'immersed',     // Wants mental challenge = deep focus
+      easy: 'scattered',         // Wants easy viewing = light focus
+      moderate: 'present'        // Default balanced focus
+    };
+    profile.focus = focusMapping[answers.cognitive_load] || 'present';
 
-    // Map emotional tone to mood
+    // Map emotional tone DIRECTLY to mood - respects what user actually wants
     const moodMapping = {
-      intense: 'melancholic',
-      uplifting: 'content',
-      contemplative: 'melancholic',
-      escapist: 'adventurous'
+      intense: 'melancholic',      // Dark, intense = melancholic mood
+      uplifting: 'content',        // Happy, positive = content mood  
+      contemplative: 'melancholic', // Thoughtful = melancholic mood
+      escapist: 'adventurous'      // Fantasy escape = adventurous mood
     };
     profile.mood = moodMapping[answers.emotional_tone] || 'content';
 
-    // Map attention level to focus
-    const focusMapping = {
-      full_focus: 'immersed',
-      moderate: 'present',
-      background: 'scattered'
+    // Map attention level to ENERGY (not focus) - how much energy they have
+    const energyMapping = {
+      full_focus: 'energized',   // Can fully focus = has energy
+      moderate: 'neutral',       // Moderate attention = neutral energy
+      background: 'drained'      // Background viewing = low energy
     };
-    profile.focus = focusMapping[answers.attention_level] || 'present';
+    profile.energy = energyMapping[answers.attention_level] || 'neutral';
 
-    // Map discovery mode to openness
-    if (answers.discovery_mode === 'surprise') {
-      profile.openness = answers.emotional_tone === 'intense' ? 'experimental' : 'exploring';
-    } else {
-      profile.openness = 'comfort_zone';
-    }
+    // Map discovery mode to openness - respects user's risk tolerance
+    const opennessMapping = {
+      surprise: 'experimental',   // Wants surprises = experimental
+      mixed: 'exploring',        // Wants some variety = exploring
+      reliable: 'comfort_zone'   // Wants familiar = comfort zone
+    };
+    profile.openness = opennessMapping[answers.discovery_mode] || 'exploring';
 
-    // Personal context adjustments
-    if (answers.personal_context === 'escaping') {
-      profile.mood = 'adventurous';
-      profile.openness = 'exploring';
-    } else if (answers.personal_context === 'reflecting') {
-      profile.mood = 'melancholic';
-      profile.focus = 'immersed';
+    // Personal context provides HINTS but doesn't override
+    // Only adjust if profile dimensions are still at defaults
+    if (answers.personal_context === 'escaping' && profile.mood === 'content') {
+      profile.mood = 'adventurous';  // Escapism suggests adventure
+    } else if (answers.personal_context === 'reflecting' && profile.energy === 'neutral') {
+      profile.energy = 'drained';  // Reflection often comes when tired
+    } else if (answers.personal_context === 'exploring' && profile.openness === 'exploring') {
+      profile.openness = 'experimental';  // Exploring life = try new things
+    } else if (answers.personal_context === 'building' && profile.focus === 'present') {
+      profile.focus = 'immersed';  // Building phase needs focus
     }
 
     return profile;

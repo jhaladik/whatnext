@@ -172,12 +172,19 @@ async function generateMovieRecommendations(userState, env) {
       userState.domain
     );
     
-    // Build filters
+    // COMBINE emotional profile with preference text for richer search
+    const enrichedSearchQuery = combineEmotionalAndPreference(
+      preferenceText,
+      emotionalResult.emotionalProfile,
+      emotionalResult.vector
+    );
+    
+    // Build SOFT filters (not hard exclusions)
     const filters = buildSmartFilters(answers, userState.context);
     
-    // Search movies
+    // Search movies using enriched query
     const vectorResults = await vectorService.searchMovies(
-      preferenceText, 
+      enrichedSearchQuery, 
       filters, 
       20
     );
@@ -192,13 +199,13 @@ async function generateMovieRecommendations(userState, env) {
       confidence: emotionalResult.confidence
     };
     
-    // Temporarily disable surprise injection to avoid placeholder movies
-    // const recommendationsWithSurprises = await surpriseEngine.injectSurprise(
-    //   enrichedMovies.slice(0, 10),
-    //   userProfile,
-    //   userState.context
-    // );
-    const recommendationsWithSurprises = enrichedMovies.slice(0, 10);
+    // Enable surprise injection - adds 2 surprise movies to the 10 recommendations
+    const recommendationsWithSurprises = await surpriseEngine.injectSurprise(
+      enrichedMovies.slice(0, 10),
+      userProfile,
+      userState.context
+    );
+    // Now we have 12 movies total: 10 regular + 2 surprises
     
     // Validate moment
     const validation = await validationService.validateMoment(
@@ -227,6 +234,55 @@ async function generateMovieRecommendations(userState, env) {
       emotionalProfile: null
     };
   }
+}
+
+// Combine emotional profile with preference text for richer search
+function combineEmotionalAndPreference(preferenceText, emotionalProfile, emotionalVector) {
+  // Start with the base preference text
+  let enrichedQuery = preferenceText;
+  
+  // Add emotional dimensions to enhance the search
+  if (emotionalProfile) {
+    const emotionalEnhancements = [];
+    
+    // Add energy-based enhancements
+    if (emotionalProfile.energy === 'energized') {
+      emotionalEnhancements.push('high-energy, exciting, thrilling');
+    } else if (emotionalProfile.energy === 'drained') {
+      emotionalEnhancements.push('gentle, calming, soothing');
+    }
+    
+    // Add mood-based enhancements
+    if (emotionalProfile.mood === 'melancholic') {
+      emotionalEnhancements.push('emotional, deep, poignant');
+    } else if (emotionalProfile.mood === 'adventurous') {
+      emotionalEnhancements.push('adventurous, exciting, discovery');
+    }
+    
+    // Add openness-based enhancements
+    if (emotionalProfile.openness === 'experimental') {
+      emotionalEnhancements.push('unique, unconventional, artistic');
+    } else if (emotionalProfile.openness === 'comfort_zone') {
+      emotionalEnhancements.push('familiar, classic, well-loved');
+    }
+    
+    // Add focus-based enhancements
+    if (emotionalProfile.focus === 'immersed') {
+      emotionalEnhancements.push('complex, layered, detailed');
+    } else if (emotionalProfile.focus === 'scattered') {
+      emotionalEnhancements.push('simple, straightforward, accessible');
+    }
+    
+    // Append emotional enhancements to the query
+    if (emotionalEnhancements.length > 0) {
+      enrichedQuery += ' The film should also be ' + emotionalEnhancements.join(', ') + '.';
+    }
+  }
+  
+  // Add vector weights as hints (if we had direct vector support)
+  // For now, the text query will be converted to a vector by the vectorize worker
+  
+  return enrichedQuery;
 }
 
 // Build smart filters from answers

@@ -1,7 +1,12 @@
 // src/services/surpriseEngine.js
+import { VectorSearchService } from './vectorSearchService.js';
+import { MovieEnrichmentService } from './movieEnrichmentService.js';
+
 export class SurpriseEngine {
   constructor(env) {
     this.env = env;
+    this.vectorService = new VectorSearchService(env);
+    this.enrichmentService = new MovieEnrichmentService(env);
     
     // Surprise configuration
     this.surpriseFactors = {
@@ -71,27 +76,33 @@ export class SurpriseEngine {
    */
   async injectSurprise(baseRecommendations, userProfile, context = {}) {
     try {
-      const surpriseStrategy = this.determineSurpriseStrategy(userProfile, context);
-      const surpriseCount = this.calculateSurpriseCount(baseRecommendations.length, userProfile);
+      // Always add exactly 2 surprises: 1 wildcard + 1 adjacent discovery
+      const avoidIds = new Set(baseRecommendations.map(m => m.movieId || m.id));
       
-      // Split recommendations into expected and surprise
-      const expectedCount = baseRecommendations.length - surpriseCount;
-      const expected = baseRecommendations.slice(0, expectedCount);
+      // Generate one wildcard (high-quality movie with context awareness)
+      const wildcard = await this.findWildcard(context, avoidIds, userProfile);
+      if (wildcard) {
+        avoidIds.add(wildcard.movieId || wildcard.id);
+      }
       
-      // Generate surprise recommendations
-      const surprises = await this.generateSurprises(
-        surpriseCount,
-        userProfile,
-        context,
-        surpriseStrategy,
-        expected
-      );
+      // Generate one adjacent discovery (related but different genre)
+      const adjacent = await this.findAdjacentDiscovery(userProfile, avoidIds);
       
-      // Mix surprises strategically
-      const mixed = this.strategicMix(expected, surprises, userProfile);
+      // Combine: original recommendations + surprises
+      const surprises = [wildcard, adjacent].filter(Boolean);
       
-      // Add surprise explanations
-      return this.addSurpriseMetadata(mixed, surprises);
+      // Add all recommendations together (not replacing)
+      const allRecommendations = [...baseRecommendations];
+      
+      // Insert surprises at strategic positions (position 3 and 7)
+      if (surprises[0]) {
+        allRecommendations.splice(3, 0, surprises[0]); // Insert wildcard at position 3
+      }
+      if (surprises[1]) {
+        allRecommendations.splice(7, 0, surprises[1]); // Insert adjacent at position 7
+      }
+      
+      return allRecommendations;
       
     } catch (error) {
       console.error('Surprise injection failed:', error);
@@ -242,51 +253,147 @@ export class SurpriseEngine {
   }
 
   /**
-   * Find adjacent discovery (similar genre, different approach)
+   * Find adjacent discovery (complementary to user preferences, different angle)
    */
   async findAdjacentDiscovery(userProfile, avoidIds) {
-    // Get user's preferred genres and find adjacent ones
-    const preferredGenres = this.extractPreferredGenres(userProfile);
-    const adjacentGenres = this.getAdjacentGenres(preferredGenres);
-    
-    const filters = {
-      genres: adjacentGenres,
-      minRating: 6.5,
-      excludeIds: Array.from(avoidIds)
-    };
-    
-    return {
-      movieId: `adjacent_${Date.now()}`,
-      title: 'Adjacent Discovery',
-      surpriseType: 'adjacent_discovery',
-      surpriseReason: 'Similar to what you like, but with a twist',
-      confidence: 80,
-      filters
-    };
+    try {
+      // Build query based on COMPLEMENTARY (not opposite) preferences
+      let adjacentQuery = "hidden gem underrated overlooked quality excellent";
+      
+      // If we have emotional profile, find complementary content
+      if (userProfile && userProfile.emotionalProfile) {
+        const profile = userProfile.emotionalProfile;
+        
+        // Find movies that complement the user's mood
+        if (profile.mood === 'melancholic') {
+          // Melancholic mood -> offer gentle uplift or cathartic depth
+          adjacentQuery = "bittersweet touching heartfelt cathartic healing emotional";
+        } else if (profile.mood === 'adventurous') {
+          // Adventurous mood -> offer different types of adventures
+          adjacentQuery = "journey quest exploration discovery epic imaginative";
+        } else if (profile.mood === 'content') {
+          // Content mood -> offer feel-good variety
+          adjacentQuery = "charming delightful witty clever satisfying enjoyable";
+        }
+        
+        // Adjust for energy level
+        if (profile.energy === 'drained') {
+          // Low energy -> offer gentle engagement
+          adjacentQuery += " gentle soothing comforting warm cozy";
+        } else if (profile.energy === 'energized') {
+          // High energy -> offer different types of excitement
+          adjacentQuery += " dynamic vibrant colorful engaging captivating";
+        }
+        
+        // Consider openness for how different to go
+        if (profile.openness === 'experimental') {
+          adjacentQuery += " unique unconventional innovative artistic visionary";
+        } else if (profile.openness === 'comfort_zone') {
+          adjacentQuery += " acclaimed beloved classic timeless celebrated";
+        }
+      }
+      
+      // Search for adjacent discovery
+      const results = await this.vectorService.searchMovies(
+        adjacentQuery,
+        {
+          minRating: 7.5,
+          excludeIds: Array.from(avoidIds),
+          diversify: true
+        },
+        15
+      );
+      
+      if (results && results.length > 0) {
+        // Pick from top results randomly
+        const randomIndex = Math.floor(Math.random() * Math.min(5, results.length));
+        const adjacent = results[randomIndex];
+        
+        // Enrich the adjacent pick
+        const enriched = await this.enrichmentService.enrichMovieResults([adjacent]);
+        
+        if (enriched && enriched[0]) {
+          enriched[0].isSurprise = true;
+          enriched[0].surpriseType = 'adjacent_discovery';
+          enriched[0].surpriseReason = '🔍 Adjacent Discovery - A different flavor you might enjoy';
+          return enriched[0];
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Failed to find adjacent discovery:', error);
+      return null;
+    }
   }
 
   /**
-   * Find a complete wildcard
+   * Find a complete wildcard - a high-quality movie with user context awareness
    */
-  async findWildcard(context, avoidIds) {
-    const pool = this.wildcardPools[context.timeOfDay] || this.wildcardPools.weekday;
-    const selected = this.weightedRandom(pool);
-    
-    const filters = {
-      genre: selected.genre,
-      randomSort: true,  // Completely random selection
-      limit: 1,
-      excludeIds: Array.from(avoidIds)
-    };
-    
-    return {
-      movieId: `wildcard_${Date.now()}`,
-      title: 'Wildcard Pick',
-      surpriseType: 'wildcard',
-      surpriseReason: 'Because sometimes magic happens',
-      confidence: 50,
-      filters
-    };
+  async findWildcard(context, avoidIds, userProfile) {
+    try {
+      // Base query for high quality
+      let wildcardQuery = "exceptional masterpiece acclaimed must-watch";
+      
+      // Add context-aware elements to wildcard selection
+      if (userProfile && userProfile.emotionalProfile) {
+        const profile = userProfile.emotionalProfile;
+        
+        // Even wildcards should respect basic user state
+        if (profile.energy === 'drained') {
+          wildcardQuery += " accessible engaging not-too-demanding";
+        } else if (profile.energy === 'energized') {
+          wildcardQuery += " gripping powerful unforgettable";
+        }
+        
+        // Respect the user's openness level even in wildcards
+        if (profile.openness === 'comfort_zone') {
+          wildcardQuery += " crowd-pleaser universally-loved widely-acclaimed";
+        } else if (profile.openness === 'experimental') {
+          wildcardQuery += " cult-classic hidden-masterpiece overlooked-gem";
+        }
+      }
+      
+      // Time-based wildcards
+      if (context.timeOfDay === 'lateNight') {
+        wildcardQuery += " atmospheric moody nocturnal";
+      } else if (context.timeOfDay === 'morning') {
+        wildcardQuery += " uplifting inspiring fresh";
+      }
+      
+      // Use vector search to find a random great movie
+      const results = await this.vectorService.searchMovies(
+        wildcardQuery,
+        {
+          minRating: 8.0,  // Only highly rated movies
+          excludeIds: Array.from(avoidIds),
+          randomize: true  // Add randomization to get different results
+        },
+        20  // Get more results to pick randomly from
+      );
+      
+      if (results && results.length > 0) {
+        // Pick a random movie from the top results
+        const randomIndex = Math.floor(Math.random() * Math.min(10, results.length));
+        const wildcard = results[randomIndex];
+        
+        // Enrich the wildcard pick
+        const enriched = await this.enrichmentService.enrichMovieResults([wildcard]);
+        
+        if (enriched && enriched[0]) {
+          // Mark it as a surprise
+          enriched[0].isSurprise = true;
+          enriched[0].surpriseType = 'wildcard';
+          enriched[0].surpriseReason = '🎲 Wildcard Pick - Because sometimes magic happens!';
+          return enriched[0];
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Failed to find wildcard:', error);
+      return null;
+    }
   }
 
   /**
