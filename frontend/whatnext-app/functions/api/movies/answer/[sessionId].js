@@ -56,27 +56,57 @@ export async function onRequest(context) {
     const userState = JSON.parse(sessionData);
     const { questions } = userState;
     
-    // Add answer to choices
+    // Initialize choices if needed
     if (!userState.choices) {
       userState.choices = [];
     }
     
-    userState.choices.push({
-      questionId,
-      choice: answer,
-      responseTime: responseTime || 0,
-      timestamp: Date.now()
-    });
+    // Check if this question was already answered
+    const existingAnswerIndex = userState.choices.findIndex(
+      choice => choice.questionId === questionId
+    );
     
-    const answeredCount = userState.choices.length;
+    if (existingAnswerIndex >= 0) {
+      // Update existing answer instead of adding duplicate
+      userState.choices[existingAnswerIndex] = {
+        questionId,
+        choice: answer,
+        responseTime: responseTime || 0,
+        timestamp: Date.now()
+      };
+      console.log(`Session ${sessionId}: Updated answer for question ${questionId}`);
+    } else {
+      // Add new answer
+      userState.choices.push({
+        questionId,
+        choice: answer,
+        responseTime: responseTime || 0,
+        timestamp: Date.now()
+      });
+      console.log(`Session ${sessionId}: Added answer for question ${questionId}`);
+    }
+    
+    // Count unique answered questions
+    const answeredQuestionIds = new Set(userState.choices.map(c => c.questionId));
+    const answeredCount = answeredQuestionIds.size;
+    
+    // Find next unanswered question
+    let nextQuestionIndex = -1;
+    for (let i = 0; i < questions.length; i++) {
+      if (!answeredQuestionIds.has(questions[i].id)) {
+        nextQuestionIndex = i;
+        break;
+      }
+    }
+    
     userState.currentQuestionIndex = answeredCount;
     
     console.log(`Session ${sessionId}: Answered ${answeredCount}/${questions.length} questions`);
     
     // Check if we have more questions
-    if (answeredCount < questions.length) {
-      // Return next question
-      const nextQuestion = questions[answeredCount];
+    if (nextQuestionIndex >= 0) {
+      // Return next unanswered question
+      const nextQuestion = questions[nextQuestionIndex];
       
       // Update session
       await env.USER_SESSIONS.put(
@@ -86,11 +116,13 @@ export async function onRequest(context) {
       );
       
       return new Response(JSON.stringify({
+        type: 'question',
         question: nextQuestion,
         progress: { 
           current: answeredCount + 1, 
           total: questions.length 
-        }
+        },
+        sessionId: sessionId
       }), {
         headers: {
           'Content-Type': 'application/json',

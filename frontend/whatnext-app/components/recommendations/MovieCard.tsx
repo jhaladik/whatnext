@@ -324,15 +324,16 @@ export function MovieCard({ movie, index, reaction, onReaction }: MovieCardProps
         </div>
       </motion.div>
 
-      {/* Surprise Reason Tooltip */}
+      {/* Surprise Reason - Always visible for surprise picks */}
       {movie.isSurprise && movie.surpriseReason && (
         <motion.div
-          initial={{ opacity: 0 }}
-          whileHover={{ opacity: 1 }}
-          className="mt-2 pointer-events-none"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="mt-2"
         >
-          <div className="bg-black/90 text-white text-xs p-2 rounded-lg">
-            💡 {movie.surpriseReason}
+          <div className="bg-gradient-to-r from-purple-900/90 to-indigo-900/90 text-white text-sm p-3 rounded-lg shadow-lg">
+            <span className="font-semibold">{movie.surpriseReason}</span>
           </div>
         </motion.div>
       )}
