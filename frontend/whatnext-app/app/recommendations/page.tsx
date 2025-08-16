@@ -12,31 +12,8 @@ export default function RecommendationsPage() {
   const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
-    // Check for debug data in storage first (from testing)
-    const debugData = localStorage.getItem('debug_recommendations');
-    const debugSessionId = localStorage.getItem('debug_sessionId');
-    
-    if (debugData && debugSessionId) {
-      try {
-        const parsedData = JSON.parse(debugData);
-        if (parsedData.recommendations && parsedData.recommendations.length > 0) {
-          // Populate store with debug data using the loadFromStorage method
-          store.loadFromStorage({
-            sessionId: debugSessionId,
-            recommendations: parsedData.recommendations,
-            moment: parsedData.moment,
-            validation: parsedData.validation,
-            emotionalProfile: parsedData.emotionalProfile
-          });
-          
-          setIsInitialized(true);
-          console.log('[RecommendationsPage] Loaded debug data:', parsedData.recommendations.length, 'movies');
-          return;
-        }
-      } catch (error) {
-        console.error('[RecommendationsPage] Failed to parse debug data:', error);
-      }
-    }
+    // Skip debug data - only use real session data
+    // Debug data causes stale sessions and wrong recommendations
     
     // Check sessionStorage for normal flow data
     const sessionData = sessionStorage.getItem('recommendations_data');

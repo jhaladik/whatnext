@@ -56,6 +56,22 @@ export const useRecommendationStore = create<RecommendationState>()(
         startSession: async (options = {}) => {
           console.log('[Store] Starting session with options:', options);
           set({ isLoading: true, error: null });
+          
+          // Clear ALL old session data first
+          if (typeof window !== 'undefined') {
+            // Clear sessionStorage
+            sessionStorage.removeItem('whatnext_session_id');
+            sessionStorage.removeItem('whatnext_session_data');
+            sessionStorage.removeItem('recommendations_data');
+            sessionStorage.removeItem('session_id');
+            
+            // Clear localStorage debug data
+            localStorage.removeItem('debug_recommendations');
+            localStorage.removeItem('debug_sessionId');
+            
+            console.log('[Store] Cleared all old session data');
+          }
+          
           try {
             console.log('[Store] Calling API...');
             const response = await api.startSession(options);
@@ -69,7 +85,7 @@ export const useRecommendationStore = create<RecommendationState>()(
                 domain: response.domain,
                 flowType: response.flowType
               }));
-              console.log('[Store] Saved to sessionStorage');
+              console.log('[Store] Saved NEW session to sessionStorage');
             }
             
             set({

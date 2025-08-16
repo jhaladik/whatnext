@@ -107,9 +107,15 @@ export async function onRequest(context) {
     
   } catch (error) {
     console.error('Error refining recommendations:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Session ID:', sessionId);
+    
+    // More detailed error response
     return new Response(JSON.stringify({
       error: 'Failed to refine recommendations',
-      message: error.message
+      message: error.message || 'Unknown error occurred',
+      details: error.stack,
+      sessionId: sessionId
     }), {
       status: 500,
       headers: {

@@ -1,4 +1,8 @@
 // src/services/refinementEngine.js
+import { VectorSearchService } from './vectorSearchService.js';
+import { MovieEnrichmentService } from './movieEnrichmentService.js';
+import { PreferenceToVectorConverter } from './preferenceToVectorConverter.js';
+
 export class RefinementEngine {
   constructor(env) {
     this.env = env;
@@ -428,11 +432,7 @@ export class RefinementEngine {
    */
   async applyRefinement(vectorAdjustment, strategy) {
     try {
-      // Import required services dynamically
-      const { VectorSearchService } = await import('./vectorSearchService.js');
-      const { MovieEnrichmentService } = await import('./movieEnrichmentService.js');
-      const { PreferenceToVectorConverter } = await import('./preferenceToVectorConverter.js');
-      
+      // Use imported services (now imported at top of file)
       const vectorService = new VectorSearchService(this.env);
       const enrichmentService = new MovieEnrichmentService(this.env);
       const vectorConverter = new PreferenceToVectorConverter(this.env);
@@ -445,6 +445,11 @@ export class RefinementEngine {
       
       // Build answers map from choices
       const answers = {};
+      if (!this.session.userState.choices || !Array.isArray(this.session.userState.choices)) {
+        console.error('No choices array in userState:', this.session.userState);
+        console.error('Session keys:', Object.keys(this.session.userState));
+        throw new Error('No user choices available for refinement');
+      }
       this.session.userState.choices.forEach(choice => {
         answers[choice.questionId] = choice.choice;
       });
@@ -510,8 +515,10 @@ export class RefinementEngine {
       
     } catch (error) {
       console.error('Failed to apply refinement:', error);
-      // Fallback to empty array if refinement fails
-      return [];
+      console.error('Error stack:', error.stack);
+      console.error('Session state:', JSON.stringify(this.session?.userState || {}));
+      // Don't hide the error - throw it so we can see what's wrong
+      throw error;
     }
   }
 
@@ -542,10 +549,10 @@ export class RefinementEngine {
       feedback,
       strategy: strategy.action,
       results: results.length,
-      refinementNumber: ++this.session.refinementCount
+      refinementNumber: this.session.userState ? (this.session.userState.refinementCount || 0) + 1 : 1
     };
 
-    this.session.interactions.push(refinement);
+    this.interactions.push(refinement);
 
     // Store in analytics if enabled
     if (this.env.ENABLE_ANALYTICS) {
