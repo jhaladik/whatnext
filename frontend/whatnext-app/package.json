@@ -7,9 +7,10 @@
     "build": "next build",
     "build:cloudflare": "next build && npx @cloudflare/next-on-pages@1 --experimental-minify",
     "pages:build": "npx @cloudflare/next-on-pages@1",
-    "preview": "npx wrangler pages dev .vercel/output/static --compatibility-flag=nodejs_compat",
-    "deploy": "npx wrangler pages deploy .vercel/output/static --project-name=whatnext-frontend",
-    "deploy:direct": "npm run build && npx wrangler pages deploy .vercel/output/static --project-name=whatnext-frontend",
+    "preview": "npx wrangler pages dev out --compatibility-flag=nodejs_compat",
+    "deploy": "npm run build && npx wrangler pages deploy out --project-name=whatnext-frontend --branch=main",
+    "deploy:production": "npm run build && npx wrangler pages deploy out --project-name=whatnext-frontend --branch=main",
+    "deploy:preview": "npm run build && npx wrangler pages deploy out --project-name=whatnext-frontend",
     "start": "next start",
     "lint": "next lint"
   },

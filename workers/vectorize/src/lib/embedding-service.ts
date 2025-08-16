@@ -13,6 +13,7 @@ export interface MovieEmbedding {
     runtime: number;
     language: string;
     popularity: number;
+    vote_count?: number;
     keywords: string[];
     overview_snippet: string;
   };
@@ -84,7 +85,7 @@ export class EmbeddingService {
         // Log token usage
         await this.logTokenUsage(data.usage?.total_tokens || 0);
         
-        // Create embeddings with metadata
+        // Create embeddings with metadata (no poster data - fetched separately)
         return movies.map((movie, index) => ({
           id: `movie_${movie.tmdb_id}`,
           values: data.data[index].embedding,
@@ -98,9 +99,6 @@ export class EmbeddingService {
             language: movie.original_language,
             popularity: movie.popularity,
             vote_count: movie.vote_count,
-            poster_path: movie.poster_path,
-            backdrop_path: movie.backdrop_path,
-            release_date: movie.release_date,
             keywords: movie.keywords.slice(0, 10).map(k => k.name),
             overview_snippet: movie.overview.slice(0, 200)
           }

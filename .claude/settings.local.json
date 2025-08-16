@@ -14,10 +14,18 @@
       "Bash(wrangler d1 migrations list:*)",
       "Bash(npm run deploy:*)",
       "Bash(npm run dev:*)",
-      "Bash(npx wrangler d1 create:*)"
+      "Bash(npx wrangler d1 create:*)",
+      "Bash(grep:*)",
+      "Bash(npx create-next-app@latest:*)",
+      "Bash(cp:*)",
+      "Bash(true)",
+      "Bash(mv:*)"
     ],
     "deny": [],
     "ask": [],
-    "defaultMode": "acceptEdits"
+    "defaultMode": "acceptEdits",
+    "additionalDirectories": [
+      "C:\\c\\Users\\jhala\\OneDrive\\APPS\\WHATNEXT\\workers\\movie-recommendations"
+    ]
   }
 }

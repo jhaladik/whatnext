@@ -1,0 +1,22 @@
+At C:\Users\jhala\OneDrive\APPS\WHATNEXT\workers\movie-recommendations\scripts\test-analytics.ps1:569 char:51
++ ... ost "[COMPLETE] Analytics testing finished!" -ForegroundColor Magenta
++                                                ~~~~~~~~~~~~~~~~~~~~~~~~~~
+The string is missing the terminator: ".
+At C:\Users\jhala\OneDrive\APPS\WHATNEXT\workers\movie-recommendations\scripts\test-analytics.ps1:50 char:22
++         if ($result) {
++                      ~
+Missing closing '}' in statement block or type definition.
+At C:\Users\jhala\OneDrive\APPS\WHATNEXT\workers\movie-recommendations\scripts\test-analytics.ps1:48 char:9
++     try {
++         ~
+Missing closing '}' in statement block or type definition.
+At C:\Users\jhala\OneDrive\APPS\WHATNEXT\workers\movie-recommendations\scripts\test-analytics.ps1:570 char:1
++ 
+The Try statement is missing its Catch or Finally block.
+At C:\Users\jhala\OneDrive\APPS\WHATNEXT\workers\movie-recommendations\scripts\test-analytics.ps1:39 char:32
++ function Test-AnalyticsFeature {
++                                ~
+Missing closing '}' in statement block or type definition.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : TerminatorExpectedAtEndOfString
+ 
